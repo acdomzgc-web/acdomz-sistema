@@ -1,8 +1,8 @@
 {
   "_versions": {
     "extrair-nf-acdomz": 2,
-    "extrair-dre-condominio": 1,
-    "gerar-parecer-ia": 1,
+    "extrair-dre-condominio": 2,
+    "gerar-parecer-ia": 2,
     "gerar-comunicado-ia": 1,
     "sindia-bot-handler": 1
   }
