@@ -1,5 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Building, Users, FileText, LayoutDashboard, Building2 } from 'lucide-react'
+import {
+  Building,
+  Users,
+  FileText,
+  LayoutDashboard,
+  Building2,
+  DollarSign,
+  TrendingDown,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +26,8 @@ const navItems = [
   { title: 'Condomínios', url: '/condominios', icon: Building },
   { title: 'Moradores', url: '/moradores', icon: Users },
   { title: 'Documentos', url: '/documentos', icon: FileText },
+  { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
+  { title: 'Despesas', url: '/despesas', icon: TrendingDown },
 ]
 
 export function AppSidebar() {

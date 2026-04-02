@@ -30,6 +30,29 @@ export const api = {
       supabase.from('documentos_condominio').insert(data).select().single(),
     delete: async (id: string) => supabase.from('documentos_condominio').delete().eq('id', id),
   },
+  receitas: {
+    list: async () =>
+      supabase
+        .from('receitas_acdomz')
+        .select('*, condominios(name)')
+        .order('date', { ascending: false }),
+    create: async (data: any) => supabase.from('receitas_acdomz').insert(data).select().single(),
+  },
+  despesasRecorrentes: {
+    list: async () =>
+      supabase
+        .from('despesas_recorrentes_acdomz')
+        .select('*')
+        .order('day_of_month', { ascending: true }),
+    create: async (data: any) =>
+      supabase.from('despesas_recorrentes_acdomz').insert(data).select().single(),
+  },
+  despesasPontuais: {
+    list: async () =>
+      supabase.from('despesas_pontuais_acdomz').select('*').order('date', { ascending: false }),
+    create: async (data: any) =>
+      supabase.from('despesas_pontuais_acdomz').insert(data).select().single(),
+  },
   dashboard: {
     stats: async () => {
       const [condos, morad] = await Promise.all([
