@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase/client'
 
 export const api = {
+  profiles: {
+    get: async (id: string) => supabase.from('profiles').select('*').eq('id', id).single(),
+  },
   administradoras: {
     list: async () =>
       supabase.from('administradoras').select('*').order('created_at', { ascending: false }),
@@ -60,6 +63,21 @@ export const api = {
         supabase.from('moradores').select('id', { count: 'exact' }),
       ])
       return { condos: condos.count || 0, moradores: morad.count || 0 }
+    },
+  },
+  financeiroCondominio: {
+    list: async (condominioId?: string) => {
+      let query = supabase
+        .from('financeiro_condominio')
+        .select('*')
+        .order('date', { ascending: false })
+      if (condominioId) {
+        query = query.eq('condominio_id', condominioId)
+      }
+      return query
+    },
+    getBySindico: async (sindicoId: string) => {
+      return supabase.from('condominios').select('*').eq('sindico_id', sindicoId).single()
     },
   },
 }

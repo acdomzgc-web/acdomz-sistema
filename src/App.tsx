@@ -12,6 +12,8 @@ import Moradores from './pages/Moradores'
 import Documentos from './pages/Documentos'
 import FinanceiroAcdomz from './pages/FinanceiroAcdomz'
 import DespesasAcdomz from './pages/DespesasAcdomz'
+import DashboardFinanceiroAcdomz from './pages/DashboardFinanceiroAcdomz'
+import FinanceiroCondominio from './pages/FinanceiroCondominio'
 import { AuthProvider } from './hooks/use-auth'
 import { AuthGuard } from './components/AuthGuard'
 
@@ -37,6 +39,8 @@ const App = () => (
             <Route path="/documentos" element={<Documentos />} />
             <Route path="/financeiro" element={<FinanceiroAcdomz />} />
             <Route path="/despesas" element={<DespesasAcdomz />} />
+            <Route path="/dashboard-financeiro" element={<DashboardFinanceiroAcdomz />} />
+            <Route path="/financeiro-condominio" element={<FinanceiroCondominio />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

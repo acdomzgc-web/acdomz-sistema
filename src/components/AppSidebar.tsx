@@ -7,6 +7,8 @@ import {
   Building2,
   DollarSign,
   TrendingDown,
+  PieChart,
+  Wallet,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -26,8 +28,10 @@ const navItems = [
   { title: 'Condomínios', url: '/condominios', icon: Building },
   { title: 'Moradores', url: '/moradores', icon: Users },
   { title: 'Documentos', url: '/documentos', icon: FileText },
-  { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
-  { title: 'Despesas', url: '/despesas', icon: TrendingDown },
+  { title: 'Dash. Financeiro', url: '/dashboard-financeiro', icon: PieChart },
+  { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
+  { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
+  { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
 ]
 
 export function AppSidebar() {
