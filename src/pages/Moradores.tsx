@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Plus, Search, MessageCircle, Edit, MoreHorizontal } from 'lucide-react'
+import { api } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -36,46 +38,12 @@ const roleColors: Record<Role, string> = {
   'Conselho Fiscal': 'bg-[#EF4444] text-white hover:bg-[#EF4444]/90',
 }
 
-const mockResidents = [
-  {
-    id: 1,
-    name: 'Roberto Almeida',
-    role: 'Proprietário' as Role,
-    unit: 'Apto 101 - Bloco A',
-    phone: '(11) 98765-4321',
-    email: 'roberto@email.com',
-    status: 'Ativo',
-  },
-  {
-    id: 2,
-    name: 'Fernanda Lima',
-    role: 'Locatário' as Role,
-    unit: 'Apto 205 - Bloco B',
-    phone: '(11) 91234-5678',
-    email: 'fernanda@email.com',
-    status: 'Ativo',
-  },
-  {
-    id: 3,
-    name: 'Dr. Paulo Mendes',
-    role: 'Conselho Fiscal' as Role,
-    unit: 'Apto 801 - Bloco A',
-    phone: '(11) 99999-8888',
-    email: 'paulo.mendes@email.com',
-    status: 'Ativo',
-  },
-  {
-    id: 4,
-    name: 'João Santos',
-    role: 'Morador' as Role,
-    unit: 'Apto 101 - Bloco A',
-    phone: '(11) 97777-6666',
-    email: 'joao@email.com',
-    status: 'Inativo',
-  },
-]
-
 export default function Moradores() {
+  const [residents, setResidents] = useState<any[]>([])
+
+  useEffect(() => {
+    api.moradores.list().then((res) => setResidents(res.data || []))
+  }, [])
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -124,12 +92,14 @@ export default function Moradores() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockResidents.map((res) => (
+              {residents.map((res) => (
                 <TableRow key={res.id} className="hover:bg-muted/30">
                   <TableCell>
                     <div className="font-medium text-foreground">{res.name}</div>
-                    <Badge className={`mt-1 text-[10px] py-0 px-1.5 ${roleColors[res.role]}`}>
-                      {res.role}
+                    <Badge
+                      className={`mt-1 text-[10px] py-0 px-1.5 ${roleColors[res.role as Role] || roleColors['Morador']}`}
+                    >
+                      {res.role || 'Morador'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-medium">{res.unit}</TableCell>

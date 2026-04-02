@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { api } from '@/services/api'
+import { useToast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, Search, Building } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,26 +32,36 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 
-const mockCondos = [
-  {
-    id: 1,
-    name: 'Residencial Alpha',
-    address: 'Rua das Flores, 100',
-    admin: 'Gestão Prime',
-    sindico: 'Carlos Silva',
-    units: 120,
-  },
-  {
-    id: 2,
-    name: 'Torres do Sol',
-    address: 'Av. Brasil, 2000',
-    admin: 'CondoMaster Sul',
-    sindico: 'Mariana Costa',
-    units: 250,
-  },
-]
-
 export default function Condominios() {
+  const [condos, setCondos] = useState<any[]>([])
+  const [admins, setAdmins] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+
+  const loadData = async () => {
+    const { data } = await api.condominios.list()
+    if (data) setCondos(data)
+  }
+
+  useEffect(() => {
+    loadData()
+    api.administradoras.list().then((res) => setAdmins(res.data || []))
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    await api.condominios.create({
+      name: formData.get('name'),
+      cnpj: formData.get('cnpj'),
+      address: formData.get('address'),
+      total_units: parseInt(formData.get('units') as string) || 0,
+      admin_id: formData.get('admin_id') || null,
+    })
+    toast({ title: 'Condomínio salvo com sucesso!' })
+    setOpen(false)
+    loadData()
+  }
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -57,7 +69,7 @@ export default function Condominios() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Condomínios</h1>
           <p className="text-muted-foreground">Gestão do portfólio de propriedades.</p>
         </div>
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" /> Novo Condomínio
@@ -69,61 +81,70 @@ export default function Condominios() {
                 <Building className="h-5 w-5 text-secondary" /> Cadastrar Condomínio
               </DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-primary border-b pb-1">
-                  Informações Básicas
-                </h3>
-                <div className="grid gap-2">
-                  <Label htmlFor="c-name">Nome do Condomínio</Label>
-                  <Input id="c-name" placeholder="Ex: Residencial Alpha" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary border-b pb-1">
+                    Informações Básicas
+                  </h3>
                   <div className="grid gap-2">
-                    <Label htmlFor="c-cnpj">CNPJ</Label>
-                    <Input id="c-cnpj" placeholder="00.000.000/0000-00" />
+                    <Label htmlFor="c-name">Nome do Condomínio</Label>
+                    <Input id="c-name" name="name" required placeholder="Ex: Residencial Alpha" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="c-cnpj">CNPJ</Label>
+                      <Input id="c-cnpj" name="cnpj" placeholder="00.000.000/0000-00" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c-units">Total de Unidades</Label>
+                      <Input id="c-units" name="units" type="number" placeholder="Ex: 120" />
+                    </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="c-units">Total de Unidades</Label>
-                    <Input id="c-units" type="number" placeholder="Ex: 120" />
+                    <Label htmlFor="c-address">Endereço Completo</Label>
+                    <Input
+                      id="c-address"
+                      name="address"
+                      placeholder="Rua, Número, Bairro, Cidade - UF"
+                    />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="c-address">Endereço Completo</Label>
-                  <Input id="c-address" placeholder="Rua, Número, Bairro, Cidade - UF" />
-                </div>
-              </div>
 
-              <div className="space-y-4 mt-2">
-                <h3 className="text-sm font-semibold text-primary border-b pb-1">
-                  Relacionamentos
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Administradora</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Gestão Prime</SelectItem>
-                        <SelectItem value="2">CondoMaster Sul</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Síndico Atual</Label>
-                    <Input placeholder="Nome do Síndico" />
+                <div className="space-y-4 mt-2">
+                  <h3 className="text-sm font-semibold text-primary border-b pb-1">
+                    Relacionamentos
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Administradora</Label>
+                      <Select name="admin_id">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {admins.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Síndico Atual (via App)</Label>
+                      <Input disabled placeholder="Vincule pelo cadastro de usuários" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit">Salvar Condomínio</Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Salvar Condomínio</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -151,7 +172,7 @@ export default function Condominios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCondos.map((condo) => (
+              {condos.map((condo) => (
                 <TableRow key={condo.id} className="hover:bg-muted/30">
                   <TableCell>
                     <div className="font-medium text-primary">{condo.name}</div>
@@ -159,11 +180,13 @@ export default function Condominios() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="bg-background">
-                      {condo.admin}
+                      {condo.administradoras?.name || 'N/A'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{condo.sindico}</TableCell>
-                  <TableCell className="text-center font-medium">{condo.units}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {condo.profiles?.name || '-'}
+                  </TableCell>
+                  <TableCell className="text-center font-medium">{condo.total_units}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button

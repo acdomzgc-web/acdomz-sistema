@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import { Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,9 +19,25 @@ import { Logo } from '@/components/Logo'
 export default function Login() {
   const navigate = useNavigate()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const { signIn, session } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (session) navigate('/')
+  }, [session, navigate])
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    navigate('/')
+    setLoading(true)
+    const { error } = await signIn(email, password)
+    if (error) {
+      alert('Erro ao fazer login: ' + error.message)
+    } else {
+      navigate('/')
+    }
+    setLoading(false)
   }
 
   return (
@@ -55,6 +73,8 @@ export default function Login() {
                 type="email"
                 placeholder="admin@acdomz.com.br"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-background"
               />
             </div>
@@ -65,7 +85,14 @@ export default function Login() {
                   Esqueceu a senha?
                 </Link>
               </div>
-              <Input id="password" type="password" required className="bg-background" />
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-background"
+              />
             </div>
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox id="remember" />
@@ -76,8 +103,13 @@ export default function Login() {
                 Lembrar minhas credenciais
               </Label>
             </div>
-            <Button type="submit" className="w-full mt-6 text-base h-11" size="lg">
-              Acessar Portal
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-6 text-base h-11"
+              size="lg"
+            >
+              {loading ? 'Entrando...' : 'Acessar Portal'}
             </Button>
           </form>
         </CardContent>

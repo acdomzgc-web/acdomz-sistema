@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { api } from '@/services/api'
+import { useToast } from '@/hooks/use-toast'
 import {
   Folder,
   UploadCloud,
@@ -21,26 +23,38 @@ const folders = [
   { id: 'faq', name: 'FAQ', count: 5, icon: Folder },
 ]
 
-const files = [
-  {
-    id: 1,
-    name: 'Ata_Assembleia_Ordinaria_2023.pdf',
-    type: 'PDF',
-    date: '15/03/2024',
-    size: '2.4 MB',
-  },
-  {
-    id: 2,
-    name: 'Ata_Extraordinaria_Piscina.pdf',
-    type: 'PDF',
-    date: '02/02/2024',
-    size: '1.1 MB',
-  },
-  { id: 3, name: 'Eleicao_Sindico_Assinada.pdf', type: 'PDF', date: '10/12/2023', size: '3.5 MB' },
-]
-
 export default function Documentos() {
   const [activeFolder, setActiveFolder] = useState('ata')
+  const [files, setFiles] = useState<any[]>([])
+  const { toast } = useToast()
+
+  const loadData = async () => {
+    const { data } = await api.documentos.list()
+    if (data) setFiles(data)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleLoadDefaults = async () => {
+    const defaults = [
+      { name: 'Regulamento Padrão ACDOMZ.pdf', type: 'PDF', size: '1.2 MB', folder: 'regimento' },
+      { name: 'Horários de Funcionamento.pdf', type: 'PDF', size: '0.5 MB', folder: 'regimento' },
+      { name: 'Contatos Importantes.pdf', type: 'PDF', size: '0.1 MB', folder: 'faq' },
+      { name: 'FAQ Padrão.pdf', type: 'PDF', size: '0.8 MB', folder: 'faq' },
+    ]
+    for (const doc of defaults) {
+      await api.documentos.create(doc)
+    }
+    toast({ title: 'Templates carregados com sucesso!' })
+    loadData()
+  }
+
+  const handleDelete = async (id: string) => {
+    await api.documentos.delete(id)
+    loadData()
+  }
 
   return (
     <div className="space-y-6 animate-fade-in h-full flex flex-col">
@@ -51,6 +65,7 @@ export default function Documentos() {
         </div>
         <Button
           variant="outline"
+          onClick={handleLoadDefaults}
           className="gap-2 border-secondary text-primary hover:bg-secondary/20"
         >
           <FileText className="h-4 w-4" /> Carregar Documentos Padrão
@@ -119,52 +134,57 @@ export default function Documentos() {
           <Card className="shadow-sm border-border/50">
             <CardContent className="p-0">
               <div className="divide-y">
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center shrink-0">
-                        <FileText className="h-5 w-5 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-primary text-sm line-clamp-1">{file.name}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>{file.date}</span>
-                          <span>•</span>
-                          <span>{file.size}</span>
+                {files
+                  .filter((f) => f.folder === activeFolder)
+                  .map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-primary text-sm line-clamp-1">
+                            {file.name}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                            <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                            <span>•</span>
+                            <span>{file.size}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:bg-primary/10"
+                          title="Visualizar"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:bg-primary/10"
+                          title="Baixar"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(file.id)}
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary hover:bg-primary/10"
-                        title="Visualizar"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary hover:bg-primary/10"
-                        title="Baixar"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>

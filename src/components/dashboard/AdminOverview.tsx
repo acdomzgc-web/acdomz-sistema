@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Building, Users, DollarSign, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { api } from '@/services/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
@@ -28,11 +30,27 @@ const recentCondos = [
 ]
 
 export function AdminOverview() {
+  const [stats, setStats] = useState({ condos: 0, moradores: 0 })
+
+  useEffect(() => {
+    api.dashboard.stats().then((res) => setStats(res))
+  }, [])
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard title="Total Condomínios" value="48" icon={Building} trend="+2%" />
-        <KpiCard title="Moradores Ativos" value="3.240" icon={Users} trend="+15%" />
+        <KpiCard
+          title="Total Condomínios"
+          value={stats.condos.toString()}
+          icon={Building}
+          trend="+2%"
+        />
+        <KpiCard
+          title="Moradores Ativos"
+          value={stats.moradores.toString()}
+          icon={Users}
+          trend="+15%"
+        />
         <KpiCard title="Receita Mensal" value="R$ 1.2M" icon={DollarSign} trend="+8%" />
         <KpiCard title="Despesa Mensal" value="R$ 840k" icon={TrendingDown} trend="-3%" />
         <KpiCard title="Lucro Líquido" value="R$ 360k" icon={TrendingUp} trend="+12%" />

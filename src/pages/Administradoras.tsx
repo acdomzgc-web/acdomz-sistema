@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { api } from '@/services/api'
+import { useToast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,27 +24,40 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 
-const mockAdmins = [
-  {
-    id: 1,
-    name: 'Gestão Prime',
-    cnpj: '12.345.678/0001-90',
-    email: 'contato@gestaoprime.com',
-    phone: '(11) 3456-7890',
-    address: 'Av. Paulista, 1000',
-  },
-  {
-    id: 2,
-    name: 'CondoMaster Sul',
-    cnpj: '98.765.432/0001-10',
-    email: 'atendimento@condomaster.com',
-    phone: '(41) 3333-4444',
-    address: 'Rua das Flores, 500',
-  },
-]
-
 export default function Administradoras() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [admins, setAdmins] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const { toast } = useToast()
+
+  const loadData = async () => {
+    const { data } = await api.administradoras.list()
+    if (data) setAdmins(data)
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    await api.administradoras.create({
+      name: formData.get('name'),
+      cnpj: formData.get('cnpj'),
+      phone: formData.get('phone'),
+      email: formData.get('email'),
+      address: formData.get('address'),
+    })
+    toast({ title: 'Administradora cadastrada com sucesso!' })
+    setOpen(false)
+    loadData()
+  }
+
+  const handleDelete = async (id: string) => {
+    await api.administradoras.delete(id)
+    loadData()
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -51,7 +66,7 @@ export default function Administradoras() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Administradoras</h1>
           <p className="text-muted-foreground">Gerencie as empresas parceiras do portal.</p>
         </div>
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" /> Nova Administradora
@@ -61,36 +76,42 @@ export default function Administradoras() {
             <DialogHeader>
               <DialogTitle>Cadastrar Administradora</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Razão Social / Nome Fantasia</Label>
-                <Input id="name" placeholder="Ex: Gestão Prime Ltda" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="cnpj">CNPJ</Label>
-                  <Input id="cnpj" placeholder="00.000.000/0000-00" />
+                  <Label htmlFor="name">Razão Social / Nome Fantasia</Label>
+                  <Input id="name" name="name" required placeholder="Ex: Gestão Prime Ltda" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="cnpj">CNPJ</Label>
+                    <Input id="cnpj" name="cnpj" required placeholder="00.000.000/0000-00" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input id="phone" name="phone" placeholder="(00) 0000-0000" />
+                  </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input id="phone" placeholder="(00) 0000-0000" />
+                  <Label htmlFor="email">E-mail Comercial</Label>
+                  <Input id="email" name="email" type="email" placeholder="contato@empresa.com" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="address">Endereço Completo</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    placeholder="Rua, Número, Bairro, Cidade - UF"
+                  />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">E-mail Comercial</Label>
-                <Input id="email" type="email" placeholder="contato@empresa.com" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="address">Endereço Completo</Label>
-                <Input id="address" placeholder="Rua, Número, Bairro, Cidade - UF" />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <Button type="submit">Salvar Cadastro</Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Salvar Cadastro</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -120,39 +141,42 @@ export default function Administradoras() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockAdmins.map((admin) => (
-                <TableRow key={admin.id} className="hover:bg-muted/30">
-                  <TableCell className="font-medium text-primary">{admin.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{admin.cnpj}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <p>{admin.email}</p>
-                      <p className="text-muted-foreground">{admin.phone}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {admin.address}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {admins
+                .filter((a) => a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map((admin) => (
+                  <TableRow key={admin.id} className="hover:bg-muted/30">
+                    <TableCell className="font-medium text-primary">{admin.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{admin.cnpj}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p>{admin.email}</p>
+                        <p className="text-muted-foreground">{admin.phone}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                      {admin.address}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(admin.id)}
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </CardContent>
