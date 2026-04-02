@@ -1,14 +1,15 @@
-/* Main App Component - Handles routing (using react-router-dom), query client and other providers - use this file to add all routes */
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import Index from './pages/Index'
-import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
-
-// ONLY IMPORT AND RENDER WORKING PAGES, NEVER ADD PLACEHOLDER COMPONENTS OR PAGES IN THIS FILE
-// AVOID REMOVING ANY CONTEXT PROVIDERS FROM THIS FILE (e.g. TooltipProvider, Toaster, Sonner)
+import NotFound from './pages/NotFound'
+import Login from './pages/Login'
+import Dashboard from './pages/Index'
+import Administradoras from './pages/Administradoras'
+import Condominios from './pages/Condominios'
+import Moradores from './pages/Moradores'
+import Documentos from './pages/Documentos'
 
 const App = () => (
   <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
@@ -16,9 +17,13 @@ const App = () => (
       <Toaster />
       <Sonner />
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES MUST BE ADDED HERE */}
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/administradoras" element={<Administradoras />} />
+          <Route path="/condominios" element={<Condominios />} />
+          <Route path="/moradores" element={<Moradores />} />
+          <Route path="/documentos" element={<Documentos />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
