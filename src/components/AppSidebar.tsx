@@ -30,6 +30,7 @@ const navItems = [
   { title: 'Documentos', url: '/documentos', icon: FileText },
   { title: 'Dash. Financeiro', url: '/dashboard-financeiro', icon: PieChart },
   { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
+  { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
   { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
   { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
 ]
