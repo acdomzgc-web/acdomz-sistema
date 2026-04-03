@@ -58,7 +58,9 @@ export function AppSidebar() {
           .filter(Boolean)
         const missing = defaultNavItems.filter((i) => !order.includes(i.title))
         setNavItems([...orderedItems, ...missing])
-      } catch (e) {}
+      } catch (e) {
+        console.error('Failed to parse sidebar order', e)
+      }
     }
   }, [])
 
