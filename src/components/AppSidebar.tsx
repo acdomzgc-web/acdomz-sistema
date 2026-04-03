@@ -11,6 +11,7 @@ import {
   Wallet,
   Megaphone,
   Bot,
+  Calculator,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const navItems = [
   { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
   { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
   { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
+  { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
   { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
   { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
 ]
