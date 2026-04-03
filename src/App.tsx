@@ -19,6 +19,7 @@ import Comunicados from './pages/Comunicados'
 import Sindia from './pages/Sindia'
 import CalculadoraHonorarios from './pages/CalculadoraHonorarios'
 import Relatorios from './pages/Relatorios'
+import Configuracoes from './pages/Configuracoes'
 import { AuthProvider } from './hooks/use-auth'
 import { AuthGuard } from './components/AuthGuard'
 import { ThemeProvider } from './components/ThemeProvider'
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/sindia" element={<Sindia />} />
               <Route path="/calculadora" element={<CalculadoraHonorarios />} />
               <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

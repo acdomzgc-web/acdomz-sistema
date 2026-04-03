@@ -13,6 +13,7 @@ import {
   Bot,
   Calculator,
   BarChart2,
+  Settings,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -41,6 +42,7 @@ const navItems = [
   { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
   { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
+  { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
 
 export function AppSidebar() {
