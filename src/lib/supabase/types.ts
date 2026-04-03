@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -63,46 +69,68 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'calculos_honorarios_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "calculos_honorarios_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
         ]
       }
       comunicados: {
         Row: {
+          comunicado_gerado: string | null
           condominio_id: string | null
           content: string | null
           created_at: string
+          criado_por: string | null
+          data_criacao: string | null
           date: string | null
+          descricao_original: string | null
+          formato_download: string | null
           id: string
           title: string | null
         }
         Insert: {
+          comunicado_gerado?: string | null
           condominio_id?: string | null
           content?: string | null
           created_at?: string
+          criado_por?: string | null
+          data_criacao?: string | null
           date?: string | null
+          descricao_original?: string | null
+          formato_download?: string | null
           id?: string
           title?: string | null
         }
         Update: {
+          comunicado_gerado?: string | null
           condominio_id?: string | null
           content?: string | null
           created_at?: string
+          criado_por?: string | null
+          data_criacao?: string | null
           date?: string | null
+          descricao_original?: string | null
+          formato_download?: string | null
           id?: string
           title?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'comunicados_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "comunicados_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comunicados_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -139,18 +167,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'condominios_admin_id_fkey'
-            columns: ['admin_id']
+            foreignKeyName: "condominios_admin_id_fkey"
+            columns: ["admin_id"]
             isOneToOne: false
-            referencedRelation: 'administradoras'
-            referencedColumns: ['id']
+            referencedRelation: "administradoras"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'condominios_sindico_id_fkey'
-            columns: ['sindico_id']
+            foreignKeyName: "condominios_sindico_id_fkey"
+            columns: ["sindico_id"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -181,18 +209,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'conversas_sindia_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "conversas_sindia_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'conversas_sindia_user_id_fkey'
-            columns: ['user_id']
+            foreignKeyName: "conversas_sindia_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -277,11 +305,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'documentos_condominio_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "documentos_condominio_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -315,11 +343,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'financeiro_condominio_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "financeiro_condominio_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -365,18 +393,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'moradores_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "moradores_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'moradores_user_id_fkey'
-            columns: ['user_id']
+            foreignKeyName: "moradores_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -404,11 +432,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'parecer_financeiro_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "parecer_financeiro_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -463,11 +491,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'receitas_acdomz_condominio_id_fkey'
-            columns: ['condominio_id']
+            foreignKeyName: "receitas_acdomz_condominio_id_fkey"
+            columns: ["condominio_id"]
             isOneToOne: false
-            referencedRelation: 'condominios'
-            referencedColumns: ['id']
+            referencedRelation: "condominios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -495,11 +523,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'regras_calculo_honorarios_tipo_condominio_id_fkey'
-            columns: ['tipo_condominio_id']
+            foreignKeyName: "regras_calculo_honorarios_tipo_condominio_id_fkey"
+            columns: ["tipo_condominio_id"]
             isOneToOne: false
-            referencedRelation: 'tipos_condominio'
-            referencedColumns: ['id']
+            referencedRelation: "tipos_condominio"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -540,31 +568,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -573,23 +603,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -598,23 +628,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -623,36 +653,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -660,6 +690,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -692,6 +723,11 @@ export const Constants = {
 //   content: text (nullable)
 //   date: date (nullable)
 //   created_at: timestamp with time zone (not null, default: now())
+//   descricao_original: text (nullable)
+//   comunicado_gerado: text (nullable)
+//   formato_download: text (nullable)
+//   data_criacao: timestamp with time zone (nullable, default: now())
+//   criado_por: uuid (nullable)
 // Table: condominios
 //   id: uuid (not null, default: gen_random_uuid())
 //   name: text (not null)
@@ -788,6 +824,7 @@ export const Constants = {
 //   PRIMARY KEY calculos_honorarios_pkey: PRIMARY KEY (id)
 // Table: comunicados
 //   FOREIGN KEY comunicados_condominio_id_fkey: FOREIGN KEY (condominio_id) REFERENCES condominios(id)
+//   FOREIGN KEY comunicados_criado_por_fkey: FOREIGN KEY (criado_por) REFERENCES profiles(id)
 //   PRIMARY KEY comunicados_pkey: PRIMARY KEY (id)
 // Table: condominios
 //   FOREIGN KEY condominios_admin_id_fkey: FOREIGN KEY (admin_id) REFERENCES administradoras(id)
@@ -900,12 +937,13 @@ export const Constants = {
 //   BEGIN
 //     INSERT INTO public.profiles (id, email, name, role)
 //     VALUES (
-//       NEW.id,
-//       NEW.email,
-//       COALESCE(NEW.raw_user_meta_data->>'name', 'Usuário'),
+//       NEW.id, 
+//       NEW.email, 
+//       COALESCE(NEW.raw_user_meta_data->>'name', 'Usuário'), 
 //       COALESCE(NEW.raw_user_meta_data->>'role', 'morador')
 //     ) ON CONFLICT (id) DO NOTHING;
 //     RETURN NEW;
 //   END;
 //   $function$
-//
+//   
+
