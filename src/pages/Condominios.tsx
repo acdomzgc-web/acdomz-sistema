@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { api } from '@/services/api'
+import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Edit, Trash2, Search, Building } from 'lucide-react'
+import { Plus, Edit, Search, Building } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -35,33 +34,75 @@ import { Badge } from '@/components/ui/badge'
 export default function Condominios() {
   const [condos, setCondos] = useState<any[]>([])
   const [admins, setAdmins] = useState<any[]>([])
+  const [profiles, setProfiles] = useState<any[]>([])
   const [open, setOpen] = useState(false)
+  const [editingCondo, setEditingCondo] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const { toast } = useToast()
 
   const loadData = async () => {
-    const { data } = await api.condominios.list()
+    const { data } = await supabase
+      .from('condominios')
+      .select('*, administradoras(name), profiles:sindico_id(name)')
+      .order('name')
     if (data) setCondos(data)
   }
 
   useEffect(() => {
     loadData()
-    api.administradoras.list().then((res) => setAdmins(res.data || []))
+    supabase
+      .from('administradoras')
+      .select('*')
+      .order('name')
+      .then((res) => setAdmins(res.data || []))
+    supabase
+      .from('profiles')
+      .select('*')
+      .in('role', ['sindico', 'morador'])
+      .order('name')
+      .then((res) => setProfiles(res.data || []))
   }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    await api.condominios.create({
-      name: formData.get('name'),
-      cnpj: formData.get('cnpj'),
-      address: formData.get('address'),
+
+    const payload = {
+      name: formData.get('name') as string,
+      cnpj: formData.get('cnpj') as string,
+      address: formData.get('address') as string,
       total_units: parseInt(formData.get('units') as string) || 0,
-      admin_id: formData.get('admin_id') || null,
-    })
-    toast({ title: 'Condomínio salvo com sucesso!' })
+      admin_id: (formData.get('admin_id') as string) || null,
+      sindico_id: (formData.get('sindico_id') as string) || null,
+    }
+
+    if (editingCondo) {
+      const { error } = await supabase.from('condominios').update(payload).eq('id', editingCondo.id)
+      if (error) {
+        toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Condomínio atualizado com sucesso!' })
+    } else {
+      const { error } = await supabase.from('condominios').insert(payload)
+      if (error) {
+        toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Condomínio salvo com sucesso!' })
+    }
+
     setOpen(false)
+    setEditingCondo(null)
     loadData()
   }
+
+  const filteredCondos = condos.filter(
+    (c) =>
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.cnpj?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -69,19 +110,26 @@ export default function Condominios() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Condomínios</h1>
           <p className="text-muted-foreground">Gestão do portfólio de propriedades.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(isOpen) => {
+            setOpen(isOpen)
+            if (!isOpen) setEditingCondo(null)
+          }}
+        >
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setEditingCondo(null)}>
               <Plus className="h-4 w-4" /> Novo Condomínio
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5 text-secondary" /> Cadastrar Condomínio
+                <Building className="h-5 w-5 text-secondary" />{' '}
+                {editingCondo ? 'Editar Condomínio' : 'Cadastrar Condomínio'}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
+            <form key={editingCondo?.id || 'new'} onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-primary border-b pb-1">
@@ -89,16 +137,33 @@ export default function Condominios() {
                   </h3>
                   <div className="grid gap-2">
                     <Label htmlFor="c-name">Nome do Condomínio</Label>
-                    <Input id="c-name" name="name" required placeholder="Ex: Residencial Alpha" />
+                    <Input
+                      id="c-name"
+                      name="name"
+                      defaultValue={editingCondo?.name}
+                      required
+                      placeholder="Ex: Residencial Alpha"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="c-cnpj">CNPJ</Label>
-                      <Input id="c-cnpj" name="cnpj" placeholder="00.000.000/0000-00" />
+                      <Input
+                        id="c-cnpj"
+                        name="cnpj"
+                        defaultValue={editingCondo?.cnpj}
+                        placeholder="00.000.000/0000-00"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="c-units">Total de Unidades</Label>
-                      <Input id="c-units" name="units" type="number" placeholder="Ex: 120" />
+                      <Input
+                        id="c-units"
+                        name="units"
+                        type="number"
+                        defaultValue={editingCondo?.total_units}
+                        placeholder="Ex: 120"
+                      />
                     </div>
                   </div>
                   <div className="grid gap-2">
@@ -106,6 +171,7 @@ export default function Condominios() {
                     <Input
                       id="c-address"
                       name="address"
+                      defaultValue={editingCondo?.address}
                       placeholder="Rua, Número, Bairro, Cidade - UF"
                     />
                   </div>
@@ -118,7 +184,7 @@ export default function Condominios() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Administradora</Label>
-                      <Select name="admin_id">
+                      <Select name="admin_id" defaultValue={editingCondo?.admin_id || ''}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
@@ -132,8 +198,19 @@ export default function Condominios() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Síndico Atual (via App)</Label>
-                      <Input disabled placeholder="Vincule pelo cadastro de usuários" />
+                      <Label>Síndico Atual</Label>
+                      <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || ''}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um morador/síndico..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {profiles.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} ({p.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -157,6 +234,8 @@ export default function Condominios() {
               type="search"
               placeholder="Buscar condomínios..."
               className="pl-9 bg-background"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </CardHeader>
@@ -172,7 +251,7 @@ export default function Condominios() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {condos.map((condo) => (
+              {filteredCondos.map((condo) => (
                 <TableRow key={condo.id} className="hover:bg-muted/30">
                   <TableCell>
                     <div className="font-medium text-primary">{condo.name}</div>
@@ -192,6 +271,10 @@ export default function Condominios() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => {
+                          setEditingCondo(condo)
+                          setOpen(true)
+                        }}
                         className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
                       >
                         <Edit className="h-4 w-4" />
@@ -200,6 +283,13 @@ export default function Condominios() {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredCondos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    Nenhum condomínio encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

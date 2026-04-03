@@ -17,6 +17,7 @@ import FinanceiroCondominio from './pages/FinanceiroCondominio'
 import ParecerFinanceiro from './pages/ParecerFinanceiro'
 import Comunicados from './pages/Comunicados'
 import Sindia from './pages/Sindia'
+import Sindicos from './pages/Sindicos'
 import CalculadoraHonorarios from './pages/CalculadoraHonorarios'
 import Relatorios from './pages/Relatorios'
 import Configuracoes from './pages/Configuracoes'
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/parecer-financeiro" element={<ParecerFinanceiro />} />
               <Route path="/comunicados" element={<Comunicados />} />
               <Route path="/sindia" element={<Sindia />} />
+              <Route path="/sindicos" element={<Sindicos />} />
               <Route path="/calculadora" element={<CalculadoraHonorarios />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />

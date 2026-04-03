@@ -11,6 +11,9 @@ import {
   FileArchive,
   FileBadge,
   Loader2,
+  Plus,
+  Edit2,
+  MoreVertical,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,14 +25,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const folders = [
-  { id: 'ata', name: 'ATAS', icon: FileArchive },
-  { id: 'regimento', name: 'REGIMENTO INTERNO', icon: FileText },
-  { id: 'convencao', name: 'CONVENÇÃO', icon: FileBadge },
-  { id: 'financeiro', name: 'PARECERES FINANC.', icon: Folder },
-  { id: 'faq', name: 'FAQ', icon: Folder },
-]
+const getIcon = (name: string) => {
+  switch (name) {
+    case 'FileArchive':
+      return FileArchive
+    case 'FileText':
+      return FileText
+    case 'FileBadge':
+      return FileBadge
+    default:
+      return Folder
+  }
+}
 
 export default function Documentos() {
   const { user } = useAuth()
@@ -37,10 +60,15 @@ export default function Documentos() {
 
   const [condos, setCondos] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState('')
-  const [activeFolder, setActiveFolder] = useState('ata')
+  const [folders, setFolders] = useState<any[]>([])
+  const [activeFolder, setActiveFolder] = useState<string>('')
   const [files, setFiles] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [isFolderDialogOpen, setFolderDialogOpen] = useState(false)
+  const [editingFolder, setEditingFolder] = useState<any>(null)
+  const [folderName, setFolderName] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -59,7 +87,22 @@ export default function Documentos() {
       })
   }, [user])
 
-  const loadData = async () => {
+  const loadFolders = async () => {
+    if (!selectedCondo) return
+    const { data } = await supabase
+      .from('pastas_documentos')
+      .select('*')
+      .eq('condominio_id', selectedCondo)
+      .order('created_at')
+    if (data) {
+      setFolders(data)
+      if (data.length > 0 && !data.find((f) => f.id === activeFolder)) {
+        setActiveFolder(data[0].id)
+      }
+    }
+  }
+
+  const loadFiles = async () => {
     if (!selectedCondo) return setFiles([])
     const { data } = await supabase
       .from('documentos_condominio')
@@ -70,14 +113,15 @@ export default function Documentos() {
   }
 
   useEffect(() => {
-    loadData()
+    loadFolders()
+    loadFiles()
   }, [selectedCondo])
 
   const handleUploadClick = () => fileInputRef.current?.click()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !selectedCondo) return
+    if (!file || !selectedCondo || !activeFolder) return
 
     setUploading(true)
     try {
@@ -97,23 +141,14 @@ export default function Documentos() {
 
       toast({ title: 'Upload concluído!' })
 
-      if (activeFolder === 'financeiro' && file.type === 'application/pdf') {
+      const targetFolder = folders.find((f) => f.id === activeFolder)
+      if (targetFolder && targetFolder.name.includes('FINANC') && file.type === 'application/pdf') {
         toast({ title: 'Processando DRE...', description: 'Extraindo dados via IA.' })
-        supabase.functions
-          .invoke('extrair-dre-condominio', {
-            body: { condominio_id: selectedCondo, file_path: filePath },
-          })
-          .then(({ error }) => {
-            if (error)
-              toast({
-                title: 'Erro ao processar DRE',
-                description: error.message,
-                variant: 'destructive',
-              })
-            else toast({ title: 'DRE Processada', description: 'Valores extraídos e lançados.' })
-          })
+        supabase.functions.invoke('extrair-dre-condominio', {
+          body: { condominio_id: selectedCondo, file_path: filePath },
+        })
       }
-      loadData()
+      loadFiles()
     } catch (err: any) {
       toast({ title: 'Erro no Upload', description: err.message, variant: 'destructive' })
     } finally {
@@ -122,15 +157,44 @@ export default function Documentos() {
     }
   }
 
-  const handleDelete = async (id: string, path: string) => {
+  const handleDeleteFile = async (id: string, path: string) => {
     try {
       if (path) await supabase.storage.from('documentos').remove([path])
       await supabase.from('documentos_condominio').delete().eq('id', id)
       toast({ title: 'Documento excluído' })
-      loadData()
+      loadFiles()
     } catch (err: any) {
       toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
     }
+  }
+
+  const handleSaveFolder = async () => {
+    if (!folderName.trim()) return
+    if (editingFolder) {
+      await supabase
+        .from('pastas_documentos')
+        .update({ name: folderName })
+        .eq('id', editingFolder.id)
+      toast({ title: 'Pasta atualizada!' })
+    } else {
+      await supabase
+        .from('pastas_documentos')
+        .insert({ condominio_id: selectedCondo, name: folderName, icon: 'Folder' })
+      toast({ title: 'Pasta criada!' })
+    }
+    setFolderDialogOpen(false)
+    setEditingFolder(null)
+    setFolderName('')
+    loadFolders()
+  }
+
+  const handleDeleteFolder = async (id: string) => {
+    if (!confirm('Deseja excluir esta pasta e perder a referência dos arquivos?')) return
+    await supabase.from('documentos_condominio').delete().eq('folder', id)
+    await supabase.from('pastas_documentos').delete().eq('id', id)
+    toast({ title: 'Pasta excluída' })
+    loadFolders()
+    loadFiles()
   }
 
   const activeFiles = files.filter((f) => f.folder === activeFolder)
@@ -158,43 +222,114 @@ export default function Documentos() {
         </div>
       </div>
 
+      <Dialog open={isFolderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingFolder ? 'Editar Pasta' : 'Nova Pasta'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Nome da Pasta</Label>
+              <Input
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="Ex: Contratos"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFolderDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveFolder}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid md:grid-cols-4 gap-6 flex-1">
         <Card className="md:col-span-1 shadow-sm border-border/50 h-fit">
           <CardContent className="p-4 space-y-2">
-            <h3 className="font-semibold text-sm text-muted-foreground mb-4 uppercase tracking-wider">
-              Pastas
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                Pastas
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => {
+                  setEditingFolder(null)
+                  setFolderName('')
+                  setFolderDialogOpen(true)
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             {folders.map((folder) => {
               const isActive = activeFolder === folder.id
-              const Icon = folder.icon
+              const Icon = getIcon(folder.icon)
               const count = files.filter((f) => f.folder === folder.id).length
               return (
-                <button
+                <div
                   key={folder.id}
-                  onClick={() => setActiveFolder(folder.id)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg text-sm transition-all duration-200 ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground font-medium shadow-md'
-                      : 'hover:bg-muted text-foreground'
-                  }`}
+                  className={`group w-full flex items-center justify-between p-2 rounded-lg text-sm transition-all duration-200 ${isActive ? 'bg-primary text-primary-foreground font-medium shadow-md' : 'hover:bg-muted text-foreground'}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`h-5 w-5 ${isActive ? 'text-secondary' : 'text-muted-foreground'}`}
-                    />
-                    <span className="truncate">{folder.name}</span>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      isActive ? 'bg-primary-foreground/20 text-white border-0' : 'bg-background'
-                    }
+                  <button
+                    onClick={() => setActiveFolder(folder.id)}
+                    className="flex items-center gap-3 flex-1 text-left truncate"
                   >
-                    {count}
-                  </Badge>
-                </button>
+                    <Icon
+                      className={`h-5 w-5 shrink-0 ${isActive ? 'text-secondary' : 'text-muted-foreground'}`}
+                    />
+                    <span className="truncate pr-2">{folder.name}</span>
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge
+                      variant="secondary"
+                      className={
+                        isActive ? 'bg-primary-foreground/20 text-white border-0' : 'bg-background'
+                      }
+                    >
+                      {count}
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={`h-6 w-6 opacity-0 group-hover:opacity-100 ${isActive ? 'text-white hover:bg-white/20' : 'text-muted-foreground'}`}
+                        >
+                          <MoreVertical className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingFolder(folder)
+                            setFolderName(folder.name)
+                            setFolderDialogOpen(true)
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" /> Renomear
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteFolder(folder.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir Pasta
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
               )
             })}
+            {folders.length === 0 && (
+              <div className="text-sm text-center text-muted-foreground py-4">
+                Nenhuma pasta criada.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -207,14 +342,8 @@ export default function Documentos() {
             accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
           />
           <div
-            onClick={!uploading && selectedCondo ? handleUploadClick : undefined}
-            className={`border-2 border-dashed border-border rounded-xl bg-card p-10 flex flex-col items-center justify-center text-center transition-colors group ${
-              !selectedCondo
-                ? 'opacity-50 cursor-not-allowed'
-                : uploading
-                  ? 'cursor-wait opacity-80'
-                  : 'cursor-pointer hover:bg-muted/50'
-            }`}
+            onClick={!uploading && selectedCondo && activeFolder ? handleUploadClick : undefined}
+            className={`border-2 border-dashed border-border rounded-xl bg-card p-10 flex flex-col items-center justify-center text-center transition-colors group ${!selectedCondo || !activeFolder ? 'opacity-50 cursor-not-allowed' : uploading ? 'cursor-wait opacity-80' : 'cursor-pointer hover:bg-muted/50'}`}
           >
             <div className="h-16 w-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               {uploading ? (
@@ -230,11 +359,11 @@ export default function Documentos() {
               ou clique para selecionar do seu computador
             </p>
             <Button
-              disabled={uploading || !selectedCondo}
+              disabled={uploading || !selectedCondo || !activeFolder}
               className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
               onClick={(e) => {
                 e.stopPropagation()
-                if (selectedCondo) handleUploadClick()
+                if (selectedCondo && activeFolder) handleUploadClick()
               }}
             >
               Selecionar Arquivos
@@ -276,12 +405,12 @@ export default function Documentos() {
                           className="h-8 w-8 text-primary hover:bg-primary/10"
                           title="Visualizar"
                           onClick={() => {
-                            if (file.file_path)
-                              window.open(
-                                supabase.storage.from('documentos').getPublicUrl(file.file_path)
-                                  .data.publicUrl,
-                                '_blank',
-                              )
+                            if (file.file_path) {
+                              const { data } = supabase.storage
+                                .from('documentos')
+                                .getPublicUrl(file.file_path)
+                              window.open(data.publicUrl, '_blank', 'noopener,noreferrer')
+                            }
                           }}
                         >
                           <Eye className="h-4 w-4" />
@@ -289,7 +418,7 @@ export default function Documentos() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(file.id, file.file_path)}
+                          onClick={() => handleDeleteFile(file.id, file.file_path)}
                           className="h-8 w-8 text-destructive hover:bg-destructive/10"
                           title="Excluir"
                         >
