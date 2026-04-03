@@ -1,9 +1,10 @@
-import { User, Shield, Settings, MonitorSmartphone } from 'lucide-react'
+import { User, Shield, Settings, MonitorSmartphone, Users } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DadosPessoaisTab } from '@/components/configuracoes/DadosPessoaisTab'
 import { SegurancaTab } from '@/components/configuracoes/SegurancaTab'
 import { PreferenciasTab } from '@/components/configuracoes/PreferenciasTab'
 import { SessoesTab } from '@/components/configuracoes/SessoesTab'
+import { PerfisAcessoTab } from '@/components/configuracoes/PerfisAcessoTab'
 
 export default function Configuracoes() {
   return (
@@ -18,10 +19,10 @@ export default function Configuracoes() {
       </div>
 
       <Tabs defaultValue="dados-pessoais" className="w-full">
-        <TabsList className="grid grid-cols-4 md:w-[600px] mb-6">
+        <TabsList className="grid grid-cols-5 md:w-[750px] mb-6">
           <TabsTrigger value="dados-pessoais" className="flex gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Dados Pessoais</span>
+            <span className="hidden sm:inline">Dados</span>
           </TabsTrigger>
           <TabsTrigger value="seguranca" className="flex gap-2">
             <Shield className="h-4 w-4" />
@@ -35,10 +36,17 @@ export default function Configuracoes() {
             <MonitorSmartphone className="h-4 w-4" />
             <span className="hidden sm:inline">Sessões</span>
           </TabsTrigger>
+          <TabsTrigger value="perfis" className="flex gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Perfis de Acesso</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados-pessoais" className="animate-fade-in-up">
           <DadosPessoaisTab />
+        </TabsContent>
+        <TabsContent value="perfis" className="animate-fade-in-up">
+          <PerfisAcessoTab />
         </TabsContent>
         <TabsContent value="seguranca" className="animate-fade-in-up">
           <SegurancaTab />
