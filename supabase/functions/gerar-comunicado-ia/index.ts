@@ -1,17 +1,16 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
-}
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+};
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  
   try {
-    const { prompt, condominio } = await req.json()
+    const { prompt, condominio } = await req.json();
 
     const content = `COMUNICADO OFICIAL
 
@@ -28,15 +27,15 @@ ${prompt ? `Em atenção ao tema: "${prompt}", informamos que as medidas necess�
 Contamos com a compreensão e colaboração de todos.
 
 Atenciosamente,
-A Administração`
+A Administração`;
 
-    return new Response(JSON.stringify({ status: 'success', content }), {
+    return new Response(JSON.stringify({ status: "success", content }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
+    });
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    })
+    });
   }
-})
+});
