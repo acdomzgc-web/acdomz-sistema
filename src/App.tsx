@@ -15,6 +15,7 @@ import DespesasAcdomz from './pages/DespesasAcdomz'
 import DashboardFinanceiroAcdomz from './pages/DashboardFinanceiroAcdomz'
 import FinanceiroCondominio from './pages/FinanceiroCondominio'
 import ParecerFinanceiro from './pages/ParecerFinanceiro'
+import Comunicados from './pages/Comunicados'
 import { AuthProvider } from './hooks/use-auth'
 import { AuthGuard } from './components/AuthGuard'
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/dashboard-financeiro" element={<DashboardFinanceiroAcdomz />} />
             <Route path="/financeiro-condominio" element={<FinanceiroCondominio />} />
             <Route path="/parecer-financeiro" element={<ParecerFinanceiro />} />
+            <Route path="/comunicados" element={<Comunicados />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
