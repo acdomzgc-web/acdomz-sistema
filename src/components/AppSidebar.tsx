@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import {
   Building,
   Users,
   FileText,
   LayoutDashboard,
   Building2,
-  DollarSign,
-  TrendingDown,
   PieChart,
   Wallet,
   Megaphone,
@@ -14,6 +13,7 @@ import {
   Calculator,
   BarChart2,
   Settings,
+  GripVertical,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -27,26 +27,61 @@ import {
 } from '@/components/ui/sidebar'
 import { Logo } from '@/components/Logo'
 
-const navItems = [
+const defaultNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Administradoras', url: '/administradoras', icon: Building2 },
   { title: 'Condomínios', url: '/condominios', icon: Building },
   { title: 'Moradores', url: '/moradores', icon: Users },
   { title: 'Documentos', url: '/documentos', icon: FileText },
-  { title: 'Dash. Financeiro', url: '/dashboard-financeiro', icon: PieChart },
+  { title: 'Dash. Financeiro ACDOMZ', url: '/dashboard-financeiro', icon: PieChart },
   { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
   { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
   { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
   { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
+  { title: 'Síndicos', url: '/sindicos', icon: Users },
   { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
-  { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
-  { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
 
 export function AppSidebar() {
   const location = useLocation()
+  const [navItems, setNavItems] = useState(defaultNavItems)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-order-v2')
+    if (saved) {
+      try {
+        const order = JSON.parse(saved)
+        const orderedItems = order
+          .map((title: string) => defaultNavItems.find((i) => i.title === title))
+          .filter(Boolean)
+        const missing = defaultNavItems.filter((i) => !order.includes(i.title))
+        setNavItems([...orderedItems, ...missing])
+      } catch (e) {}
+    }
+  }, [])
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', index.toString())
+  }
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'))
+    if (sourceIndex === targetIndex || isNaN(sourceIndex)) return
+
+    const newItems = [...navItems]
+    const [removed] = newItems.splice(sourceIndex, 1)
+    newItems.splice(targetIndex, 0, removed)
+
+    setNavItems(newItems)
+    localStorage.setItem('sidebar-order-v2', JSON.stringify(newItems.map((i) => i.title)))
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
 
   return (
     <Sidebar>
@@ -55,8 +90,18 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="px-2">
         <SidebarMenu>
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
+          {navItems.map((item, index) => (
+            <SidebarMenuItem
+              key={item.title}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragOver={handleDragOver}
+              className="group/item relative"
+            >
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full opacity-0 group-hover/item:opacity-100 cursor-grab px-1 z-10 hover:text-primary">
+                <GripVertical className="h-4 w-4" />
+              </div>
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === item.url}

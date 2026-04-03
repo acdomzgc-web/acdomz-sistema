@@ -1,41 +1,44 @@
-import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
-};
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, x-supabase-client-platform, apikey, content-type',
+}
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
   try {
-    const { prompt, condominio } = await req.json();
+    const { prompt, condominio } = await req.json()
 
-    const content = `COMUNICADO OFICIAL
+    const content = `[CARTA FORMAL]
 
-Condomínio: ${condominio?.name || 'Não informado'}
-Endereço: ${condominio?.address || 'Não informado'}
-Síndico: ${condominio?.sindico_name || 'Não informado'}
-Administradora: ${condominio?.admin_name || 'Não informada'}
+Local: ${condominio?.address || 'Endereço não informado'}
 Data: ${new Date().toLocaleDateString('pt-BR')}
+Para: Moradores do Condomínio ${condominio?.name || 'Não informado'}
 
-Prezados moradores,
+Prezados(as) Senhores(as),
 
-${prompt ? `Em atenção ao tema: "${prompt}", informamos que as medidas necessárias estão sendo tomadas conforme as diretrizes do nosso regimento interno.` : 'Informamos que estamos realizando melhorias contínuas em nosso condomínio.'}
+Em atenção ao assunto: "${prompt}", servimo-nos do presente comunicado para informar que a administração, representada pelo síndico ${condominio?.sindico_name || 'responsável'}, está ciente e tomando todas as providências cabíveis.
 
-Contamos com a compreensão e colaboração de todos.
+Solicitamos a colaboração de todos para que as diretrizes do nosso regimento interno sejam plenamente respeitadas, visando sempre a segurança e o bem-estar coletivo.
+
+Quaisquer dúvidas, a administração encontra-se à disposição.
 
 Atenciosamente,
-A Administração`;
 
-    return new Response(JSON.stringify({ status: "success", content }), {
+A Administração
+ACDOMZ - Gestão de Condomínios`
+
+    return new Response(JSON.stringify({ status: 'success', content }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    })
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    })
   }
-});
+})

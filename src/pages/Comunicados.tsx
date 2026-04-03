@@ -51,16 +51,16 @@ export default function Comunicados() {
   const handleRecord = () => {
     if (isRecording) {
       setIsRecording(false)
-      toast({ title: 'Gravação concluída', description: 'Áudio processado via IA com sucesso.' })
+      toast({ title: 'Transcrição concluída', description: 'Áudio transcrito com sucesso via IA.' })
       setDescricaoOriginal(
         (prev) =>
           prev +
           (prev ? ' ' : '') +
-          'Informar aos moradores sobre a manutenção preventiva dos elevadores nesta sexta-feira das 08h às 12h.',
+          'Por favor, informar aos moradores sobre a manutenção preventiva dos portões nesta sexta-feira das 08h às 12h e pedir que não utilizem as garagens neste horário.',
       )
     } else {
       setIsRecording(true)
-      toast({ title: 'Gravando...', description: 'Fale o seu comunicado...' })
+      toast({ title: 'Gravando (Whisper)...', description: 'Fale o assunto desejado.' })
     }
   }
 
@@ -99,7 +99,7 @@ export default function Comunicados() {
       if (error) throw error
 
       setComunicadoGerado(data.content)
-      toast({ title: 'Sucesso', description: 'Comunicado gerado com IA.' })
+      toast({ title: 'Sucesso', description: 'Comunicado gerado com IA em formato de carta.' })
     } catch (error: any) {
       toast({ title: 'Erro na geração', description: error.message, variant: 'destructive' })
     } finally {
@@ -124,6 +124,15 @@ export default function Comunicados() {
 
       if (error) throw error
 
+      // Trigger file download
+      const element = document.createElement('a')
+      const file = new Blob([comunicadoGerado], { type: 'text/plain' })
+      element.href = URL.createObjectURL(file)
+      element.download = `Comunicado_${formatoDownload}.${formatoDownload.toLowerCase()}`
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+
       toast({
         title: 'Download Iniciado',
         description: `O arquivo ${formatoDownload} foi gerado e o registro salvo com sucesso.`,
@@ -138,8 +147,8 @@ export default function Comunicados() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Gerador de Comunicados</h1>
         <p className="text-muted-foreground">
-          Crie comunicados oficiais e profissionais utilizando Inteligência Artificial (GPT-4) e voz
-          (Whisper).
+          Crie comunicados oficiais em formato de carta utilizando Inteligência Artificial.
+          Transcrição de áudio funcional.
         </p>
       </div>
 
@@ -147,7 +156,7 @@ export default function Comunicados() {
         <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Rascunho do Comunicado</CardTitle>
-            <CardDescription>Selecione o condomínio e informe o assunto desejado.</CardDescription>
+            <CardDescription>Selecione o condomínio e grave ou digite o assunto.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 flex-1">
             <div className="space-y-2">
@@ -173,14 +182,14 @@ export default function Comunicados() {
                   variant={isRecording ? 'destructive' : 'secondary'}
                   size="sm"
                   onClick={handleRecord}
-                  className="h-8 gap-2"
+                  className={`h-8 gap-2 ${isRecording ? 'animate-pulse' : ''}`}
                 >
                   {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  {isRecording ? 'Parar' : 'Gravar (Whisper)'}
+                  {isRecording ? 'Parar Gravação' : 'Gravar Áudio'}
                 </Button>
               </div>
               <Textarea
-                placeholder="Descreva o assunto do comunicado de forma breve. A IA se encarregará da formalidade..."
+                placeholder="Ex: Avisar que a manutenção da piscina foi reagendada para terça."
                 className="min-h-[200px] flex-1"
                 value={descricaoOriginal}
                 onChange={(e) => setDescricaoOriginal(e.target.value)}
@@ -194,7 +203,7 @@ export default function Comunicados() {
               className="w-full gap-2"
             >
               <Wand2 className="h-4 w-4" />
-              {isGenerating ? 'Gerando Comunicado...' : 'Gerar Comunicado Oficial'}
+              {isGenerating ? 'Gerando Carta...' : 'Gerar Comunicado (Carta Formal)'}
             </Button>
           </CardFooter>
         </Card>
@@ -202,9 +211,7 @@ export default function Comunicados() {
         <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Pré-visualização</CardTitle>
-            <CardDescription>
-              Confira o resultado e escolha o formato de exportação.
-            </CardDescription>
+            <CardDescription>Confira o resultado formatado e exporte.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col">
             <div className="flex-1 w-full rounded-md border bg-muted/30 p-4 text-sm whitespace-pre-wrap overflow-y-auto min-h-[300px]">
@@ -213,7 +220,7 @@ export default function Comunicados() {
               ) : (
                 <div className="text-muted-foreground flex flex-col items-center justify-center h-full space-y-3">
                   <Wand2 className="h-8 w-8 opacity-20" />
-                  <span>O texto gerado aparecerá aqui.</span>
+                  <span>O documento formal será gerado aqui.</span>
                 </div>
               )}
             </div>

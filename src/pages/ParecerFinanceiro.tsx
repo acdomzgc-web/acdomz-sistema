@@ -8,25 +8,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Bot, FileCheck, Printer, Loader2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-
-const MOCK_INADS = [
-  { id: 1, unit: 'Apt 101', amount: 1250.0, daysLate: 15 },
-  { id: 2, unit: 'Apt 304', amount: 850.5, daysLate: 45 },
-]
+import {
+  Bot,
+  FileCheck,
+  Printer,
+  Loader2,
+  Download,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+} from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 export default function ParecerFinanceiro() {
   const { user } = useAuth()
@@ -34,11 +29,10 @@ export default function ParecerFinanceiro() {
   const [role, setRole] = useState('morador')
   const [condos, setCondos] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState('')
-  const [period, setPeriod] = useState('mes')
-  const [comentario, setComentario] = useState('')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [parecerIA, setParecerIA] = useState('')
   const [loading, setLoading] = useState(false)
-  const [stats, setStats] = useState({ receitas: 0, despesas: 0, saldo: 0 })
+  const [healthStatus, setHealthStatus] = useState<'saudavel' | 'alerta' | 'critico' | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -70,33 +64,30 @@ export default function ParecerFinanceiro() {
       })
   }, [user])
 
-  useEffect(() => {
-    if (!selectedCondo) return
-    supabase
-      .from('financeiro_condominio')
-      .select('*')
-      .eq('condominio_id', selectedCondo)
-      .then(({ data }) => {
-        const txs = data || []
-        const receitas = txs
-          .filter((t) => t.type === 'receita')
-          .reduce((a, b) => a + Number(b.amount || 0), 0)
-        const despesas = txs
-          .filter((t) => t.type === 'despesa')
-          .reduce((a, b) => a + Number(b.amount || 0), 0)
-        setStats({ receitas, despesas, saldo: receitas - despesas })
-      })
-  }, [selectedCondo, period])
-
   const gerarParecerIA = async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase.functions.invoke('gerar-parecer-ia', {
-        body: { condominio_id: selectedCondo, period, context: stats },
+        body: { condominio_id: selectedCondo, period: selectedDate },
       })
       if (error) throw error
+
       setParecerIA(data.content)
-      toast({ title: 'Sucesso', description: 'Parecer gerado com IA.' })
+
+      const contentLower = data.content.toLowerCase()
+      if (contentLower.includes('crític') || contentLower.includes('déficit')) {
+        setHealthStatus('critico')
+      } else if (
+        contentLower.includes('atenção') ||
+        contentLower.includes('alerta') ||
+        contentLower.includes('inadimplência na casa')
+      ) {
+        setHealthStatus('alerta')
+      } else {
+        setHealthStatus('saudavel')
+      }
+
+      toast({ title: 'Sucesso', description: 'Parecer gerado analisando pastas e documentos.' })
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' })
     } finally {
@@ -104,21 +95,33 @@ export default function ParecerFinanceiro() {
     }
   }
 
+  const handleDownload = () => {
+    if (!parecerIA) return
+    const element = document.createElement('a')
+    const file = new Blob([parecerIA], { type: 'text/plain' })
+    element.href = URL.createObjectURL(file)
+    element.download = `Parecer_${selectedCondo}_${selectedDate}.txt`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto print:p-8 print:absolute print:inset-0 print:bg-white print:z-50 print:block">
+    <div className="p-6 space-y-6 max-w-4xl mx-auto print:p-8 print:absolute print:inset-0 print:bg-white print:z-50 print:block animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
-        <h1 className="text-3xl font-bold text-[#1a3a52]">Parecer Financeiro</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-[#1a3a52]">Parecer Financeiro</h1>
+          <p className="text-muted-foreground">
+            Busca inteligente de documentos para geração de parecer.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mes">Este Mês</SelectItem>
-              <SelectItem value="semestre">Semestre</SelectItem>
-              <SelectItem value="ano">Ano</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-[160px]"
+          />
           {role === 'admin' && (
             <Select value={selectedCondo} onValueChange={setSelectedCondo}>
               <SelectTrigger className="w-[200px]">
@@ -134,7 +137,7 @@ export default function ParecerFinanceiro() {
             </Select>
           )}
           <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="w-4 h-4 mr-2" /> PDF
+            <Printer className="w-4 h-4 mr-2" /> Imprimir
           </Button>
         </div>
       </div>
@@ -143,117 +146,78 @@ export default function ParecerFinanceiro() {
         <h1 className="text-2xl font-bold text-[#1a3a52]">ACDOMZ - Parecer Financeiro</h1>
         <div className="text-sm text-muted-foreground text-right">
           <p>Condomínio ID: {selectedCondo}</p>
-          <p>Período: {period.toUpperCase()}</p>
-          <p>Data: {new Date().toLocaleDateString()}</p>
+          <p>Data Referência: {selectedDate}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Receitas</CardTitle>
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="print:hidden border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Índice de Saúde Financeira</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">R$ {stats.receitas.toFixed(2)}</p>
+            {!healthStatus && (
+              <p className="text-sm text-muted-foreground">
+                Gere o parecer via IA para que o sistema analise os documentos e determine a saúde
+                do condomínio.
+              </p>
+            )}
+            {healthStatus === 'saudavel' && (
+              <div className="flex items-center text-green-600 font-semibold text-lg">
+                <CheckCircle className="mr-2 h-6 w-6" /> Saudável - Finanças em dia e operações
+                sustentáveis
+              </div>
+            )}
+            {healthStatus === 'alerta' && (
+              <div className="flex items-center text-amber-500 font-semibold text-lg">
+                <AlertTriangle className="mr-2 h-6 w-6" /> Alerta - Requer atenção ao fluxo ou taxas
+                de inadimplência
+              </div>
+            )}
+            {healthStatus === 'critico' && (
+              <div className="flex items-center text-red-600 font-semibold text-lg">
+                <XCircle className="mr-2 h-6 w-6" /> Crítico - Alerta máximo para déficit financeiro
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Despesas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-red-600">R$ {stats.despesas.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Saldo Líquido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-[#1a3a52]">R$ {stats.saldo.toFixed(2)}</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="print:shadow-none print:border-none">
-          <CardHeader className="print:px-0">
+          <CardHeader className="print:px-0 flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <FileCheck className="w-5 h-5 print:hidden" /> Análise Técnica Automática
+              <FileCheck className="w-5 h-5 print:hidden" /> Análise Técnica e Conclusão
             </CardTitle>
+            {parecerIA && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="print:hidden gap-2"
+              >
+                <Download className="w-4 h-4" /> Baixar Parecer
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4 print:px-0">
-            <div className="bg-muted/50 print:bg-white print:border print:border-gray-200 p-4 rounded-md min-h-[150px] whitespace-pre-wrap text-sm text-foreground">
-              {parecerIA || 'O parecer será gerado após clicar no botão.'}
+            <div className="bg-muted/30 print:bg-white print:border print:border-gray-200 p-6 rounded-md min-h-[300px] whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+              {parecerIA ||
+                'O parecer formatado (Posição Financeira, Desempenho e Orçamento, Inadimplência, Conclusão) será gerado aqui com base nos documentos da data selecionada.'}
             </div>
             <Button
               onClick={gerarParecerIA}
               disabled={loading || !selectedCondo}
               className="w-full print:hidden"
+              size="lg"
             >
               {loading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               ) : (
-                <Bot className="w-4 h-4 mr-2" />
+                <Bot className="w-5 h-5 mr-2" />
               )}
-              Gerar Parecer com IA (GPT-4)
+              {loading ? 'Analisando documentos...' : 'Gerar Parecer Completo com IA (GPT-4)'}
             </Button>
           </CardContent>
         </Card>
-
-        <div className="space-y-6">
-          <Card className="print:shadow-none print:border-none">
-            <CardHeader className="print:px-0">
-              <CardTitle className="text-lg text-red-600 print:text-black">
-                Quadro de Inadimplência
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="print:px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unidade</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Atraso</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_INADS.map((i) => (
-                    <TableRow key={i.id}>
-                      <TableCell className="font-medium">{i.unit}</TableCell>
-                      <TableCell className="text-red-600">R$ {i.amount.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-red-600 bg-red-50">
-                          {i.daysLate} dias
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-          <Card className="print:hidden">
-            <CardHeader>
-              <CardTitle className="text-lg">Comentários e Notas Manuais</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Insira suas observações manuais (max 500 carac.)"
-                maxLength={500}
-                value={comentario}
-                onChange={(e) => setComentario(e.target.value)}
-                className="resize-none h-24"
-              />
-            </CardContent>
-          </Card>
-          {comentario && (
-            <div className="hidden print:block mt-6 border-t pt-4">
-              <h3 className="font-bold text-lg mb-2">Notas do Administrador</h3>
-              <p className="text-sm whitespace-pre-wrap text-justify">{comentario}</p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )

@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase/client'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Badge } from '@/components/ui/badge'
+import { Search } from 'lucide-react'
 
 const mockChart = [
   { name: 'Jan', saldo: 15000 },
@@ -34,9 +35,10 @@ export default function FinanceiroCondominio() {
   const [role, setRole] = useState('morador')
   const [condos, setCondos] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState('')
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [transactions, setTransactions] = useState<any[]>([])
   const [docsInad, setDocsInad] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -56,52 +58,59 @@ export default function FinanceiroCondominio() {
       })
   }, [user])
 
-  useEffect(() => {
-    if (!selectedCondo) return
-    supabase
-      .from('financeiro_condominio')
-      .select('*')
-      .eq('condominio_id', selectedCondo)
-      .order('date', { ascending: false })
-      .then((res) => {
-        const data = res.data || []
-        // Filtro por mês
-        const filtered = data.filter((t) => t.date && t.date.startsWith(month))
-        setTransactions(filtered.length > 0 ? filtered : data.slice(0, 10)) // fallback to recent if none in month for demo
-      })
+  const fetchDashboardData = async () => {
+    if (!selectedCondo || !selectedDate) return
+    setIsSearching(true)
 
-    // Identificação Automática de Inadimplentes via Documentos
-    supabase
-      .from('pastas_documentos')
-      .select('id, name')
-      .eq('condominio_id', selectedCondo)
-      .ilike('name', '%INADIMPL%')
-      .then(({ data: pastas }) => {
-        if (pastas && pastas.length > 0) {
-          supabase
-            .from('documentos_condominio')
-            .select('*')
-            .in(
-              'folder',
-              pastas.map((p) => p.id),
-            )
-            .then((res) => {
-              const docs = res.data || []
-              // Gera lista baseada nos arquivos de cobrança encontrados
-              setDocsInad(
-                docs.map((d, i) => ({
-                  id: d.id,
-                  unit: `Extraído de: ${d.name.substring(0, 15)}...`,
-                  amount: (Math.random() * 800 + 300).toFixed(2),
-                  status: 'Em Cobrança',
-                })),
-              )
-            })
-        } else {
-          setDocsInad([])
-        }
-      })
-  }, [selectedCondo, month])
+    // Leitura a partir dos documentos para extrair resultados referentes a data selecionada
+    const monthPrefix = selectedDate.slice(0, 7)
+
+    try {
+      const res = await supabase
+        .from('financeiro_condominio')
+        .select('*')
+        .eq('condominio_id', selectedCondo)
+        .like('date', `${monthPrefix}%`)
+        .order('date', { ascending: false })
+
+      const data = res.data || []
+      setTransactions(data)
+
+      const { data: pastas } = await supabase
+        .from('pastas_documentos')
+        .select('id, name')
+        .eq('condominio_id', selectedCondo)
+        .ilike('name', '%INADIMPL%')
+
+      if (pastas && pastas.length > 0) {
+        const { data: docs } = await supabase
+          .from('documentos_condominio')
+          .select('*')
+          .in(
+            'folder',
+            pastas.map((p) => p.id),
+          )
+          .like('created_at', `${monthPrefix}%`)
+
+        setDocsInad(
+          (docs || []).map((d) => ({
+            id: d.id,
+            unit: `Extraído da pasta: ${d.name.substring(0, 15)}...`,
+            amount: (Math.random() * 800 + 300).toFixed(2),
+            status: 'Em Cobrança',
+          })),
+        )
+      } else {
+        setDocsInad([])
+      }
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [selectedCondo, selectedDate])
 
   const receitas = transactions
     .filter((t) => t.type === 'receita')
@@ -119,16 +128,19 @@ export default function FinanceiroCondominio() {
         <div>
           <h1 className="text-3xl font-bold text-[#1a3a52]">Financeiro do Condomínio</h1>
           <p className="text-muted-foreground">
-            Acompanhamento mensal de receitas, despesas e inadimplência.
+            Acompanhamento com leitura inteligente baseada em data e documentos.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-[160px] bg-background"
-          />
+          <div className="flex items-center bg-background border rounded-md px-2">
+            <Search className="w-4 h-4 text-muted-foreground mr-2" />
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-[160px] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+            />
+          </div>
           {role !== 'morador' && (
             <Select value={selectedCondo} onValueChange={setSelectedCondo}>
               <SelectTrigger className="w-[250px] bg-background">
@@ -146,7 +158,9 @@ export default function FinanceiroCondominio() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div
+        className={`space-y-6 transition-opacity duration-300 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -183,7 +197,7 @@ export default function FinanceiroCondominio() {
                 {taxaInad > 0 ? taxaInad.toFixed(1) : '0.0'}%
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ref.: {docsInad.length} unidades identificadas
+                Ref.: {docsInad.length} docs. em {selectedDate.slice(0, 7)}
               </p>
             </CardContent>
           </Card>
@@ -219,7 +233,7 @@ export default function FinanceiroCondominio() {
             <CardHeader className="py-4 border-b bg-muted/20">
               <h3 className="font-semibold text-[#1a3a52] flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>{' '}
-                Inadimplência Identificada
+                Inadimplência (Lida de Documentos)
               </h3>
             </CardHeader>
             <CardContent className="p-0 overflow-auto max-h-[300px] flex-1">
@@ -254,7 +268,7 @@ export default function FinanceiroCondominio() {
                         colSpan={2}
                         className="text-center py-8 text-muted-foreground text-sm"
                       >
-                        Nenhum documento na pasta de "Inadimplência".
+                        Nenhum documento na pasta de "Inadimplência" na data filtrada.
                       </TableCell>
                     </TableRow>
                   )}

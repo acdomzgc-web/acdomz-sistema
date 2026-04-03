@@ -27,23 +27,36 @@ import {
 
 export default function CalculadoraHonorarios() {
   const { toast } = useToast()
-  const [condominios, setCondominios] = useState<{ id: string; name: string }[]>([])
+  const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondominioId, setSelectedCondominioId] = useState<string>('none')
   const [tipoId, setTipoId] = useState<string>('horizontal')
   const [lotes, setLotes] = useState<number>(50)
   const [densidadeId, setDensidadeId] = useState<string>('media')
   const [areasComuns, setAreasComuns] = useState<number>(2)
   const [isSaving, setIsSaving] = useState(false)
+  const [isAuto, setIsAuto] = useState<boolean>(true)
 
   useEffect(() => {
     supabase
       .from('condominios')
-      .select('id, name')
+      .select('*')
       .order('name')
       .then(({ data }) => {
         if (data) setCondominios(data)
       })
   }, [])
+
+  useEffect(() => {
+    if (isAuto && selectedCondominioId !== 'none') {
+      const condo = condominios.find((c) => c.id === selectedCondominioId)
+      if (condo) {
+        setTipoId(condo.calc_tipo_id || 'horizontal')
+        setLotes(condo.total_units || 0)
+        setDensidadeId(condo.calc_densidade_id || 'media')
+        setAreasComuns(condo.calc_areas_comuns || 0)
+      }
+    }
+  }, [isAuto, selectedCondominioId, condominios])
 
   const calc = useMemo(() => {
     const tipo = TIPOS.find((x) => x.id === tipoId) || TIPOS[0]
@@ -110,26 +123,47 @@ export default function CalculadoraHonorarios() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Condomínio (Opcional)</Label>
-                <Select value={selectedCondominioId} onValueChange={setSelectedCondominioId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um condomínio..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum (Apenas Simulação)</SelectItem>
-                    {condominios.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2 flex flex-col sm:flex-row gap-4 items-end">
+                <div className="w-full sm:flex-1 space-y-2">
+                  <Label>Modo de Cálculo</Label>
+                  <Select
+                    value={isAuto ? 'auto' : 'manual'}
+                    onValueChange={(val) => setIsAuto(val === 'auto')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Automático (Extrai dados do Condomínio)</SelectItem>
+                      <SelectItem value="manual">Manual (Simulação Livre)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:flex-1 space-y-2">
+                  <Label>Condomínio Referência</Label>
+                  <Select value={selectedCondominioId} onValueChange={setSelectedCondominioId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um condomínio..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {condominios.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Separator />
               <div className="space-y-2">
                 <Label>Tipo de Condomínio</Label>
-                <Select value={tipoId} onValueChange={setTipoId}>
+                <Select
+                  value={tipoId}
+                  onValueChange={setTipoId}
+                  disabled={isAuto && selectedCondominioId !== 'none'}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -154,6 +188,7 @@ export default function CalculadoraHonorarios() {
                     type="number"
                     min={0}
                     value={lotes}
+                    disabled={isAuto && selectedCondominioId !== 'none'}
                     onChange={(e) => setLotes(Number(e.target.value))}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -166,7 +201,11 @@ export default function CalculadoraHonorarios() {
               <div className="grid sm:grid-cols-2 gap-6 items-start">
                 <div className="space-y-2">
                   <Label>Categoria de Densidade</Label>
-                  <Select value={densidadeId} onValueChange={setDensidadeId}>
+                  <Select
+                    value={densidadeId}
+                    onValueChange={setDensidadeId}
+                    disabled={isAuto && selectedCondominioId !== 'none'}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -192,6 +231,7 @@ export default function CalculadoraHonorarios() {
                   type="number"
                   min={0}
                   value={areasComuns}
+                  disabled={isAuto && selectedCondominioId !== 'none'}
                   onChange={(e) => setAreasComuns(Number(e.target.value))}
                 />
                 <p className="text-xs text-muted-foreground flex items-center">
