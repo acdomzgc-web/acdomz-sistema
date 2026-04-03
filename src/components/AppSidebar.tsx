@@ -51,7 +51,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <Logo />
+        <Logo iconClassName="h-8 w-8" textClassName="text-2xl" />
       </SidebarHeader>
       <SidebarContent className="px-2">
         <SidebarMenu>

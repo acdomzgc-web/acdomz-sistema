@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Logo } from '@/components/Logo'
 
 interface ReportLayoutProps {
   title: string
@@ -13,7 +14,11 @@ export function ReportLayout({ title, subtitle, children }: ReportLayoutProps) {
     <div className="p-8 pb-16 relative bg-white text-black min-h-screen font-sans">
       <div className="flex items-start justify-between border-b-2 border-slate-200 pb-6 mb-8">
         <div>
-          <div className="text-3xl font-black tracking-tighter text-slate-900 mb-1">ACDOMZ</div>
+          <Logo
+            className="mb-4"
+            iconClassName="h-10 w-10"
+            textClassName="text-3xl text-slate-900"
+          />
           <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
           {subtitle && <p className="text-slate-500 mt-1">{subtitle}</p>}
         </div>

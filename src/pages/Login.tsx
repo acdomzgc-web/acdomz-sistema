@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
-import { Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,7 +54,7 @@ export default function Login() {
       <Card className="w-full max-w-md z-10 shadow-2xl border-0 bg-card/95 backdrop-blur-sm animate-fade-in-up">
         <CardHeader className="space-y-4 pb-6 text-center">
           <div className="flex justify-center mb-2">
-            <Logo iconClassName="h-8 w-8" textClassName="text-3xl" />
+            <Logo iconClassName="h-14 w-14" textClassName="text-4xl" />
           </div>
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold">Bem-vindo ao Portal</CardTitle>

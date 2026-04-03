@@ -1,4 +1,3 @@
-import { Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface LogoProps {
@@ -11,11 +10,20 @@ interface LogoProps {
 export function Logo({ className, iconClassName, textClassName, showText = true }: LogoProps) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <div className="flex items-center justify-center p-1.5 bg-primary rounded-lg shadow-sm">
-        <Building2 className={cn('h-6 w-6 text-secondary', iconClassName)} strokeWidth={2.5} />
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-md overflow-hidden',
+          iconClassName || 'h-8 w-8',
+        )}
+      >
+        <img
+          src="https://img.usecurling.com/i?q=building&color=blue&shape=fill"
+          alt="ACDOMZ Logo"
+          className="h-full w-full object-contain"
+        />
       </div>
       {showText && (
-        <span className={cn('font-bold text-xl tracking-tight text-primary', textClassName)}>
+        <span className={cn('font-bold tracking-tight text-primary', textClassName || 'text-xl')}>
           ACDOMZ
         </span>
       )}

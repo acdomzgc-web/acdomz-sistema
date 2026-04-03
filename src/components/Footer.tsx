@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="mt-auto border-t bg-card py-6 px-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <Logo iconClassName="h-4 w-4" textClassName="text-sm" showText={false} />
+          <Logo iconClassName="h-6 w-6" textClassName="text-sm" showText={false} />
           <p>© 2024 ACDOMZ. Todos os direitos reservados.</p>
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">

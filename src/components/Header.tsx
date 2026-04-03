@@ -52,7 +52,14 @@ export function Header() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link to="/">ACDOMZ</Link>
+                <Link to="/" className="flex items-center gap-2 font-semibold">
+                  <img
+                    src="https://img.usecurling.com/i?q=building&color=blue&shape=fill"
+                    alt="ACDOMZ"
+                    className="h-4 w-4 object-contain"
+                  />
+                  ACDOMZ
+                </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
