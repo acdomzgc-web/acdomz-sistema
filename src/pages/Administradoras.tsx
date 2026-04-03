@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '@/services/api'
+import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 
@@ -28,10 +27,11 @@ export default function Administradoras() {
   const [searchTerm, setSearchTerm] = useState('')
   const [admins, setAdmins] = useState<any[]>([])
   const [open, setOpen] = useState(false)
+  const [editingAdmin, setEditingAdmin] = useState<any>(null)
   const { toast } = useToast()
 
   const loadData = async () => {
-    const { data } = await api.administradoras.list()
+    const { data } = await supabase.from('administradoras').select('*').order('name')
     if (data) setAdmins(data)
   }
 
@@ -39,23 +39,66 @@ export default function Administradoras() {
     loadData()
   }, [])
 
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (!isOpen) {
+      setEditingAdmin(null)
+    }
+  }
+
+  const handleEdit = (admin: any) => {
+    setEditingAdmin(admin)
+    setOpen(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    await api.administradoras.create({
-      name: formData.get('name'),
-      cnpj: formData.get('cnpj'),
-      phone: formData.get('phone'),
-      email: formData.get('email'),
-      address: formData.get('address'),
-    })
-    toast({ title: 'Administradora cadastrada com sucesso!' })
+
+    const payload = {
+      name: formData.get('name') as string,
+      cnpj: formData.get('cnpj') as string,
+      phone: formData.get('phone') as string,
+      email: formData.get('email') as string,
+      address: formData.get('address') as string,
+    }
+
+    if (editingAdmin) {
+      const { error } = await supabase
+        .from('administradoras')
+        .update(payload)
+        .eq('id', editingAdmin.id)
+
+      if (error) {
+        toast({ title: 'Erro ao atualizar administradora', variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Administradora atualizada com sucesso!' })
+    } else {
+      const { error } = await supabase.from('administradoras').insert(payload)
+
+      if (error) {
+        toast({ title: 'Erro ao cadastrar administradora', variant: 'destructive' })
+        return
+      }
+      toast({ title: 'Administradora cadastrada com sucesso!' })
+    }
+
     setOpen(false)
+    setEditingAdmin(null)
     loadData()
   }
 
   const handleDelete = async (id: string) => {
-    await api.administradoras.delete(id)
+    if (!confirm('Tem certeza que deseja excluir esta administradora?')) return
+
+    const { error } = await supabase.from('administradoras').delete().eq('id', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir administradora', variant: 'destructive' })
+      return
+    }
+
+    toast({ title: 'Administradora excluída com sucesso!' })
     loadData()
   }
 
@@ -66,50 +109,78 @@ export default function Administradoras() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Administradoras</h1>
           <p className="text-muted-foreground">Gerencie as empresas parceiras do portal.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setEditingAdmin(null)}>
               <Plus className="h-4 w-4" /> Nova Administradora
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Cadastrar Administradora</DialogTitle>
+              <DialogTitle>
+                {editingAdmin ? 'Editar Administradora' : 'Cadastrar Administradora'}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
+            <form key={editingAdmin?.id || 'new'} onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="name">Razão Social / Nome Fantasia</Label>
-                  <Input id="name" name="name" required placeholder="Ex: Gestão Prime Ltda" />
+                  <Input
+                    id="name"
+                    name="name"
+                    defaultValue={editingAdmin?.name}
+                    required
+                    placeholder="Ex: Gestão Prime Ltda"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="cnpj">CNPJ</Label>
-                    <Input id="cnpj" name="cnpj" required placeholder="00.000.000/0000-00" />
+                    <Input
+                      id="cnpj"
+                      name="cnpj"
+                      defaultValue={editingAdmin?.cnpj}
+                      required
+                      placeholder="00.000.000/0000-00"
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" name="phone" placeholder="(00) 0000-0000" />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      defaultValue={editingAdmin?.phone}
+                      placeholder="(00) 0000-0000"
+                    />
                   </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">E-mail Comercial</Label>
-                  <Input id="email" name="email" type="email" placeholder="contato@empresa.com" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    defaultValue={editingAdmin?.email}
+                    placeholder="contato@empresa.com"
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="address">Endereço Completo</Label>
                   <Input
                     id="address"
                     name="address"
+                    defaultValue={editingAdmin?.address}
                     placeholder="Rua, Número, Bairro, Cidade - UF"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Salvar Cadastro</Button>
+                <Button type="submit">
+                  {editingAdmin ? 'Salvar Alterações' : 'Salvar Cadastro'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -142,7 +213,11 @@ export default function Administradoras() {
             </TableHeader>
             <TableBody>
               {admins
-                .filter((a) => a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .filter(
+                  (a) =>
+                    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    a.cnpj.toLowerCase().includes(searchTerm.toLowerCase()),
+                )
                 .map((admin) => (
                   <TableRow key={admin.id} className="hover:bg-muted/30">
                     <TableCell className="font-medium text-primary">{admin.name}</TableCell>
@@ -161,6 +236,7 @@ export default function Administradoras() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleEdit(admin)}
                           className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
                         >
                           <Edit className="h-4 w-4" />
