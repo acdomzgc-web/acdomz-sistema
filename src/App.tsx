@@ -21,42 +21,45 @@ import CalculadoraHonorarios from './pages/CalculadoraHonorarios'
 import Relatorios from './pages/Relatorios'
 import { AuthProvider } from './hooks/use-auth'
 import { AuthGuard } from './components/AuthGuard'
+import { ThemeProvider } from './components/ThemeProvider'
 
 const App = () => (
-  <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            element={
-              <AuthGuard>
-                <Layout />
-              </AuthGuard>
-            }
-          >
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/administradoras" element={<Administradoras />} />
-            <Route path="/condominios" element={<Condominios />} />
-            <Route path="/moradores" element={<Moradores />} />
-            <Route path="/documentos" element={<Documentos />} />
-            <Route path="/financeiro" element={<FinanceiroAcdomz />} />
-            <Route path="/despesas" element={<DespesasAcdomz />} />
-            <Route path="/dashboard-financeiro" element={<DashboardFinanceiroAcdomz />} />
-            <Route path="/financeiro-condominio" element={<FinanceiroCondominio />} />
-            <Route path="/parecer-financeiro" element={<ParecerFinanceiro />} />
-            <Route path="/comunicados" element={<Comunicados />} />
-            <Route path="/sindia" element={<Sindia />} />
-            <Route path="/calculadora" element={<CalculadoraHonorarios />} />
-            <Route path="/relatorios" element={<Relatorios />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </AuthProvider>
-  </BrowserRouter>
+  <ThemeProvider defaultTheme="system" storageKey="acdomz-theme">
+    <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              element={
+                <AuthGuard>
+                  <Layout />
+                </AuthGuard>
+              }
+            >
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/administradoras" element={<Administradoras />} />
+              <Route path="/condominios" element={<Condominios />} />
+              <Route path="/moradores" element={<Moradores />} />
+              <Route path="/documentos" element={<Documentos />} />
+              <Route path="/financeiro" element={<FinanceiroAcdomz />} />
+              <Route path="/despesas" element={<DespesasAcdomz />} />
+              <Route path="/dashboard-financeiro" element={<DashboardFinanceiroAcdomz />} />
+              <Route path="/financeiro-condominio" element={<FinanceiroCondominio />} />
+              <Route path="/parecer-financeiro" element={<ParecerFinanceiro />} />
+              <Route path="/comunicados" element={<Comunicados />} />
+              <Route path="/sindia" element={<Sindia />} />
+              <Route path="/calculadora" element={<CalculadoraHonorarios />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </ThemeProvider>
 )
 
 export default App

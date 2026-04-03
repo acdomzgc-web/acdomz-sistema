@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { GlobalSearch } from '@/components/GlobalSearch'
 
 export function Header() {
   const location = useLocation()
@@ -64,6 +66,10 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
+        <GlobalSearch />
+
+        <ThemeToggle />
+
         <Button
           variant="ghost"
           size="icon"
