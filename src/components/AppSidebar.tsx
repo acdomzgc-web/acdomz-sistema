@@ -12,6 +12,7 @@ import {
   Megaphone,
   Bot,
   Calculator,
+  BarChart2,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
   { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
   { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
   { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
+  { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
 ]
 
 export function AppSidebar() {
