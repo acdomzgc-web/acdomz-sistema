@@ -10,6 +10,7 @@ import {
   PieChart,
   Wallet,
   Megaphone,
+  Bot,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const navItems = [
   { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
   { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
   { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
+  { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
   { title: 'Entradas ACDOMZ', url: '/financeiro', icon: DollarSign },
   { title: 'Saídas ACDOMZ', url: '/despesas', icon: TrendingDown },
 ]
