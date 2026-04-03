@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Bell, LogOut, Settings, User } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -23,11 +24,36 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { GlobalSearch } from '@/components/GlobalSearch'
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 
 export function Header() {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [profile, setProfile] = useState<{
+    name: string
+    foto_url: string | null
+    email: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .select('name, foto_url, email')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setProfile({
+              name: data.name,
+              foto_url: data.foto_url,
+              email: data.email,
+            })
+          }
+        })
+    }
+  }, [user])
 
   const handleLogout = async () => {
     await signOut()
@@ -50,6 +76,13 @@ export function Header() {
         return 'Portal'
     }
   }
+
+  const displayName = profile?.name || user?.user_metadata?.name || 'Administrador'
+  const displayEmail = profile?.email || user?.email
+  const displayAvatar =
+    profile?.foto_url ||
+    user?.user_metadata?.avatar_url ||
+    'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=1'
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-6 shadow-sm sticky top-0 z-10">
@@ -122,38 +155,30 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9 border border-border">
-                <AvatarImage
-                  src={
-                    user?.user_metadata?.avatar_url ||
-                    'https://img.usecurling.com/ppl/thumbnail?gender=male&seed=1'
-                  }
-                  alt="Perfil"
-                />
-                <AvatarFallback className="bg-primary text-primary-foreground">AD</AvatarFallback>
+                <AvatarImage src={displayAvatar} alt="Perfil" />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {displayName.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {user?.user_metadata?.name || 'Administrador'}
+                <p className="text-sm font-medium leading-none truncate">{displayName}</p>
+                <p className="text-xs leading-none text-muted-foreground truncate">
+                  {displayEmail}
                 </p>
-                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer" asChild>
-              <Link to="/configuracoes">
-                <User className="mr-2 h-4 w-4" />
-                <span>Meu Perfil</span>
-              </Link>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/configuracoes')}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Meu Perfil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" asChild>
-              <Link to="/configuracoes">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Configurações</span>
-              </Link>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/configuracoes')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Configurações</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
