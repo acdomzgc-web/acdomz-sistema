@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Building2,
@@ -151,7 +152,214 @@ export function AdminOverview() {
   const [specificMonth, setSpecificMonth] = useState(new Date().getMonth().toString())
   const [chartType, setChartType] = useState('bar')
 
-  const chartData = useMemo(() => generateChartData(period, specificMonth), [period, specificMonth])
+  const [metricsData, setMetricsData] = useState(MOCK_DATA)
+  const [chartData, setChartData] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [
+          { count: adminCount },
+          { count: condominiosCount },
+          { count: moradoresCount },
+          { count: sindicosCount },
+        ] = await Promise.all([
+          supabase.from('administradoras').select('*', { count: 'exact', head: true }),
+          supabase.from('condominios').select('*', { count: 'exact', head: true }),
+          supabase.from('moradores').select('*', { count: 'exact', head: true }),
+          supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'sindico'),
+        ])
+
+        const { data: receitasData } = await supabase.from('receitas_acdomz').select('amount, date')
+        const { data: despesasPontuais } = await supabase
+          .from('despesas_pontuais_acdomz')
+          .select('amount, date')
+        const { data: despesasRecorrentes } = await supabase
+          .from('despesas_recorrentes_acdomz')
+          .select('amount, day_of_month')
+
+        const now = new Date()
+        const year = now.getFullYear()
+        let start = new Date(0)
+        let end = new Date(year, 11, 31)
+
+        if (period === 'mes') {
+          start = new Date(year, parseInt(specificMonth), 1)
+          end = new Date(year, parseInt(specificMonth) + 1, 0)
+        } else if (period === 'trimestre') {
+          start = new Date(year, now.getMonth() - 2, 1)
+          end = new Date(year, now.getMonth() + 1, 0)
+        } else if (period === 'semestre') {
+          start = new Date(year, now.getMonth() - 5, 1)
+          end = new Date(year, now.getMonth() + 1, 0)
+        } else if (period === 'ano') {
+          start = new Date(year, 0, 1)
+          end = new Date(year, 11, 31)
+        }
+
+        const filteredReceitas = (receitasData || []).filter((r) => {
+          const d = new Date(r.date || '')
+          return d >= start && d <= end
+        })
+        const filteredDespesas = (despesasPontuais || []).filter((d) => {
+          const dt = new Date(d.date || '')
+          return dt >= start && dt <= end
+        })
+
+        let monthsInPeriod = 1
+        if (period === 'trimestre') monthsInPeriod = 3
+        else if (period === 'semestre') monthsInPeriod = 6
+        else if (period === 'ano') monthsInPeriod = 12
+        else if (period === 'all') monthsInPeriod = (year - 2020 + 1) * 12
+
+        const totalRecorrentes =
+          (despesasRecorrentes || []).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) *
+          monthsInPeriod
+
+        const totalReceitas = filteredReceitas.reduce(
+          (acc, curr) => acc + (Number(curr.amount) || 0),
+          0,
+        )
+        const totalDespesas =
+          filteredDespesas.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) +
+          totalRecorrentes
+        const lucro = totalReceitas - totalDespesas
+
+        const formatCurrency = (val: number) =>
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+        const hasRealData =
+          (adminCount || 0) > 0 || (condominiosCount || 0) > 0 || totalReceitas > 0
+
+        if (hasRealData) {
+          setMetricsData({
+            admin: { value: adminCount?.toString() || '0', trend: 'Total cadastrado' },
+            condominios: { value: condominiosCount?.toString() || '0', trend: 'Total cadastrado' },
+            moradores: { value: moradoresCount?.toString() || '0', trend: 'Total cadastrado' },
+            sindicos: { value: sindicosCount?.toString() || '0', trend: 'Total cadastrado' },
+            receita: {
+              value: formatCurrency(totalReceitas),
+              trend: period === 'all' ? 'Histórico completo' : 'No período',
+            },
+            despesa: {
+              value: formatCurrency(totalDespesas),
+              trend: period === 'all' ? 'Histórico completo' : 'No período',
+            },
+            lucro: {
+              value: formatCurrency(lucro),
+              trend: period === 'all' ? 'Histórico completo' : 'No período',
+            },
+          })
+        }
+
+        const newChartData = []
+        const monthNames = [
+          'Jan',
+          'Fev',
+          'Mar',
+          'Abr',
+          'Mai',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Set',
+          'Out',
+          'Nov',
+          'Dez',
+        ]
+
+        if (period === 'mes') {
+          const weeks = [0, 0, 0, 0]
+          const weeksDespesas = [0, 0, 0, 0]
+          filteredReceitas.forEach((r) => {
+            const day = new Date(r.date || '').getDate()
+            const w = Math.min(Math.floor((day - 1) / 7), 3)
+            weeks[w] += Number(r.amount) || 0
+          })
+          filteredDespesas.forEach((d) => {
+            const day = new Date(d.date || '').getDate()
+            const w = Math.min(Math.floor((day - 1) / 7), 3)
+            weeksDespesas[w] += Number(d.amount) || 0
+          })
+          const recPerWeek = totalRecorrentes / 4
+          const mName = monthNames[parseInt(specificMonth)]
+          for (let i = 0; i < 4; i++) {
+            newChartData.push({
+              name: `Sem. ${i + 1} (${mName})`,
+              receita: weeks[i],
+              despesa: weeksDespesas[i] + recPerWeek,
+            })
+          }
+        } else if (['trimestre', 'semestre', 'ano'].includes(period)) {
+          const map = new Map<string, { receita: number; despesa: number }>()
+          const mCount = period === 'trimestre' ? 3 : period === 'semestre' ? 6 : 12
+          const startMonth = start.getMonth()
+          const startYear = start.getFullYear()
+          for (let i = 0; i < mCount; i++) {
+            const m = (startMonth + i) % 12
+            const y = startYear + Math.floor((startMonth + i) / 12)
+            map.set(`${y}-${m}`, { receita: 0, despesa: totalRecorrentes / monthsInPeriod })
+          }
+          filteredReceitas.forEach((r) => {
+            const d = new Date(r.date || '')
+            const key = `${d.getFullYear()}-${d.getMonth()}`
+            if (map.has(key)) map.get(key)!.receita += Number(r.amount) || 0
+          })
+          filteredDespesas.forEach((d) => {
+            const dDate = new Date(d.date || '')
+            const key = `${dDate.getFullYear()}-${dDate.getMonth()}`
+            if (map.has(key)) map.get(key)!.despesa += Number(d.amount) || 0
+          })
+          map.forEach((val, key) => {
+            const [y, m] = key.split('-')
+            newChartData.push({
+              name: `${monthNames[parseInt(m)]}/${y.slice(2)}`,
+              receita: val.receita,
+              despesa: val.despesa,
+            })
+          })
+        } else {
+          const map = new Map<string, { receita: number; despesa: number }>()
+          receitasData?.forEach((r) => {
+            const y = new Date(r.date || '').getFullYear().toString()
+            if (!map.has(y)) map.set(y, { receita: 0, despesa: 0 })
+            map.get(y)!.receita += Number(r.amount) || 0
+          })
+          despesasPontuais?.forEach((d) => {
+            const y = new Date(d.date || '').getFullYear().toString()
+            if (!map.has(y)) map.set(y, { receita: 0, despesa: 0 })
+            map.get(y)!.despesa += Number(d.amount) || 0
+          })
+          const yearlyRecorrente = totalRecorrentes / (monthsInPeriod / 12)
+          Array.from(map.keys())
+            .sort()
+            .forEach((y) => {
+              newChartData.push({
+                name: y,
+                receita: map.get(y)!.receita,
+                despesa: map.get(y)!.despesa + yearlyRecorrente,
+              })
+            })
+          if (newChartData.length === 0) {
+            newChartData.push({ name: year.toString(), receita: 0, despesa: 0 })
+          }
+        }
+
+        if (hasRealData && totalReceitas > 0) {
+          setChartData(newChartData)
+        } else {
+          setChartData(generateChartData(period, specificMonth))
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data', err)
+      }
+    }
+
+    fetchDashboardData()
+  }, [period, specificMonth])
 
   const toggleMetric = (id: string) => {
     if (visibleMetrics.includes(id)) {
@@ -234,7 +442,7 @@ export function AdminOverview() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {METRICS_CONFIG.filter((m) => visibleMetrics.includes(m.id)).map((metric) => {
           const Icon = metric.icon
-          const data = MOCK_DATA[metric.id as keyof typeof MOCK_DATA]
+          const data = metricsData[metric.id as keyof typeof metricsData]
 
           return (
             <Card

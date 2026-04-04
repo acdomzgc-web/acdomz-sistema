@@ -73,6 +73,12 @@ export function AppSidebar() {
             .single()
           if (!error && data) {
             setProfile(data as any)
+          } else if (user.user_metadata) {
+            setProfile({
+              name: user.user_metadata.name || user.email?.split('@')[0] || 'Usuário',
+              role: user.user_metadata.role || 'morador',
+              foto_url: user.user_metadata.avatar_url || '',
+            })
           }
         } catch (e) {
           console.error('Error fetching profile', e)
@@ -89,17 +95,21 @@ export function AppSidebar() {
 
   const items = menuOrder.map((id) => ({ id, ...MENU_ITEMS_MAP[id] })).filter((item) => item.title)
 
-  const userName = profile?.name || user?.email?.split('@')[0] || 'Usuário'
+  const userName =
+    profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'
   const userInitials = userName.substring(0, 2).toUpperCase()
+
+  // Use metadata role as fallback if profile is missing
+  const currentRole = profile?.role || user?.user_metadata?.role || 'morador'
+
   const userRole =
-    profile?.role === 'admin'
-      ? 'Administrador'
-      : profile?.role === 'sindico'
-        ? 'Síndico'
-        : 'Morador'
-  const isAdmin = profile?.role === 'admin'
+    currentRole === 'admin' ? 'Administrador' : currentRole === 'sindico' ? 'Síndico' : 'Morador'
+  const isAdmin = currentRole === 'admin'
+  const isSindico = currentRole === 'sindico'
   const userAvatar =
-    profile?.foto_url || `https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`
+    profile?.foto_url ||
+    user?.user_metadata?.avatar_url ||
+    `https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`
 
   return (
     <Sidebar className="border-r border-border">
@@ -153,7 +163,7 @@ export function AppSidebar() {
                   <div className="grid flex-1 text-left text-sm leading-tight ml-2">
                     <span className="truncate font-semibold">{userName}</span>
                     <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
-                      {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
+                      {(isAdmin || isSindico) && <ShieldCheck className="w-3 h-3 text-primary" />}
                       {userRole}
                     </span>
                   </div>
@@ -176,7 +186,7 @@ export function AppSidebar() {
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold text-base">{userName}</span>
                       <span className="truncate text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
+                        {(isAdmin || isSindico) && <ShieldCheck className="w-3 h-3 text-primary" />}
                         {userRole}
                       </span>
                     </div>
