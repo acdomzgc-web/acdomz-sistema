@@ -58,8 +58,8 @@ export function AppSidebar() {
 
   const [profile, setProfile] = useState<{
     name: string
-    is_admin: boolean
-    avatar_url?: string
+    role: string
+    foto_url?: string
   } | null>(null)
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function AppSidebar() {
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('name, is_admin')
+            .select('name, role, foto_url')
             .eq('id', user.id)
             .single()
           if (!error && data) {
@@ -91,9 +91,15 @@ export function AppSidebar() {
 
   const userName = profile?.name || user?.email?.split('@')[0] || 'Usuário'
   const userInitials = userName.substring(0, 2).toUpperCase()
-  const userRole = profile?.is_admin ? 'Administrador' : 'Síndico'
+  const userRole =
+    profile?.role === 'admin'
+      ? 'Administrador'
+      : profile?.role === 'sindico'
+        ? 'Síndico'
+        : 'Morador'
+  const isAdmin = profile?.role === 'admin'
   const userAvatar =
-    profile?.avatar_url || `https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`
+    profile?.foto_url || `https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`
 
   return (
     <Sidebar className="border-r border-border">
@@ -147,7 +153,7 @@ export function AppSidebar() {
                   <div className="grid flex-1 text-left text-sm leading-tight ml-2">
                     <span className="truncate font-semibold">{userName}</span>
                     <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
-                      {profile?.is_admin && <ShieldCheck className="w-3 h-3 text-primary" />}
+                      {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
                       {userRole}
                     </span>
                   </div>
@@ -170,7 +176,7 @@ export function AppSidebar() {
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold text-base">{userName}</span>
                       <span className="truncate text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        {profile?.is_admin && <ShieldCheck className="w-3 h-3 text-primary" />}
+                        {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
                         {userRole}
                       </span>
                     </div>

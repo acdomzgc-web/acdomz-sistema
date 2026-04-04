@@ -65,16 +65,39 @@ const MOCK_DATA = {
   lucro: { value: 'R$ 173.000', trend: '+22% vs último período' },
 }
 
-const generateChartData = (period: string) => {
+const generateChartData = (period: string, specificMonth: string) => {
   const data = []
   let points = 0
   let labelPrefix = ''
 
+  if (period === 'mes') {
+    const monthNames = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ]
+    const mName = monthNames[parseInt(specificMonth)]
+    points = 4
+    for (let i = 1; i <= points; i++) {
+      data.push({
+        name: `Sem. ${i} (${mName})`,
+        receita: Math.round(120000 * (1 + (Math.random() * 0.4 - 0.1))),
+        despesa: Math.round(78000 * (1 + (Math.random() * 0.3 - 0.1))),
+      })
+    }
+    return data
+  }
+
   switch (period) {
-    case 'mes':
-      points = 4
-      labelPrefix = 'Sem. '
-      break
     case 'trimestre':
       points = 3
       labelPrefix = 'Mês '
@@ -125,9 +148,10 @@ const generateChartData = (period: string) => {
 export function AdminOverview() {
   const { visibleMetrics, setVisibleMetrics } = usePreferences()
   const [period, setPeriod] = useState('semestre')
+  const [specificMonth, setSpecificMonth] = useState(new Date().getMonth().toString())
   const [chartType, setChartType] = useState('bar')
 
-  const chartData = useMemo(() => generateChartData(period), [period])
+  const chartData = useMemo(() => generateChartData(period, specificMonth), [period, specificMonth])
 
   const toggleMetric = (id: string) => {
     if (visibleMetrics.includes(id)) {
@@ -147,19 +171,41 @@ export function AdminOverview() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Selecione o período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mes">Mês</SelectItem>
-              <SelectItem value="trimestre">Trimestre</SelectItem>
-              <SelectItem value="semestre">Semestre</SelectItem>
-              <SelectItem value="ano">Ano</SelectItem>
+              <SelectItem value="mes">Mês Específico</SelectItem>
+              <SelectItem value="trimestre">Último Trimestre</SelectItem>
+              <SelectItem value="semestre">Último Semestre</SelectItem>
+              <SelectItem value="ano">Último Ano</SelectItem>
               <SelectItem value="all">All Time</SelectItem>
             </SelectContent>
           </Select>
+
+          {period === 'mes' && (
+            <Select value={specificMonth} onValueChange={setSpecificMonth}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Janeiro</SelectItem>
+                <SelectItem value="1">Fevereiro</SelectItem>
+                <SelectItem value="2">Março</SelectItem>
+                <SelectItem value="3">Abril</SelectItem>
+                <SelectItem value="4">Maio</SelectItem>
+                <SelectItem value="5">Junho</SelectItem>
+                <SelectItem value="6">Julho</SelectItem>
+                <SelectItem value="7">Agosto</SelectItem>
+                <SelectItem value="8">Setembro</SelectItem>
+                <SelectItem value="9">Outubro</SelectItem>
+                <SelectItem value="10">Novembro</SelectItem>
+                <SelectItem value="11">Dezembro</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <DropdownMenu>
