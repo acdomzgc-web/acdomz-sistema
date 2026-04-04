@@ -1,104 +1,100 @@
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { usePreferences, MenuItemId } from '@/hooks/use-preferences'
 import { ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 
-const defaultOrder = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'administradoras', label: 'Administradoras' },
-  { id: 'condominios', label: 'Condomínios' },
-  { id: 'sindicos', label: 'Síndicos' },
-  { id: 'moradores', label: 'Moradores' },
-  { id: 'documentos', label: 'Documentos' },
-  { id: 'financeiro', label: 'Fin. Condomínio' },
-  { id: 'calculadora', label: 'Calc. Honorários' },
-]
+const MENU_LABELS: Record<MenuItemId, string> = {
+  dashboard: 'Dashboard',
+  condominios: 'Condomínios',
+  moradores: 'Moradores',
+  documentos: 'Documentos',
+  financeiro: 'Fin. Condomínio',
+  sindicos: 'Síndicos',
+  calculadora: 'Calc. Honorários',
+  configuracoes: 'Configurações',
+}
 
 export function PreferenciasTab() {
-  const { toast } = useToast()
-  const [navItems, setNavItems] = useState(defaultOrder)
+  const { menuOrder, setMenuOrder } = usePreferences()
 
-  useEffect(() => {
-    const savedOrder = localStorage.getItem('acdomz_nav_order')
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder)
-        // Garante que todas as opções padrão existam mesmo se o cache estiver desatualizado
-        const merged = parsed.filter((p: any) => defaultOrder.find((d) => d.id === p.id))
-        const missing = defaultOrder.filter((d) => !merged.find((m: any) => m.id === d.id))
-        setNavItems([...merged, ...missing])
-      } catch (e) {
-        console.error('Error parsing nav order', e)
-      }
-    }
-  }, [])
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    if (
+      (direction === 'up' && index === 0) ||
+      (direction === 'down' && index === menuOrder.length - 1)
+    )
+      return
 
-  const moveUp = (index: number) => {
-    if (index === 0) return
-    const newItems = [...navItems]
-    const temp = newItems[index - 1]
-    newItems[index - 1] = newItems[index]
-    newItems[index] = temp
-    setNavItems(newItems)
-  }
+    const newOrder = [...menuOrder]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
 
-  const moveDown = (index: number) => {
-    if (index === navItems.length - 1) return
-    const newItems = [...navItems]
-    const temp = newItems[index + 1]
-    newItems[index + 1] = newItems[index]
-    newItems[index] = temp
-    setNavItems(newItems)
-  }
-
-  const saveOrder = () => {
-    localStorage.setItem('acdomz_nav_order', JSON.stringify(navItems))
-    toast({
-      title: 'Preferências salvas',
-      description: 'A ordem do menu lateral foi atualizada.',
-    })
-    // Dispara evento para o sidebar atualizar imediatamente
-    window.dispatchEvent(new Event('nav_order_changed'))
+    ;[newOrder[index], newOrder[swapIndex]] = [newOrder[swapIndex], newOrder[index]]
+    setMenuOrder(newOrder)
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Notificações</CardTitle>
+          <CardDescription>Configure como você deseja ser notificado.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Notificações por Email</Label>
+              <p className="text-sm text-muted-foreground">
+                Receba atualizações importantes no seu email.
+              </p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Notificações no Sistema</Label>
+              <p className="text-sm text-muted-foreground">Alertas dentro da plataforma ACDOMZ.</p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Personalização do Menu Lateral</CardTitle>
           <CardDescription>
-            Reordene os itens do menu lateral para priorizar as seções que você mais utiliza no dia
-            a dia.
+            Altere a ordem de exibição das seções no menu principal do sistema para melhor se
+            adequar ao seu fluxo de trabalho.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 mb-6 max-w-xl">
-            {navItems.map((item, index) => (
+          <div className="space-y-2">
+            {menuOrder.map((itemId, index) => (
               <div
-                key={item.id}
-                className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border transition-colors hover:bg-secondary/50"
+                key={itemId}
+                className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border hover:bg-muted/60 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{item.label}</span>
+                  <GripVertical className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium">{MENU_LABELS[itemId]}</span>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => moveUp(index)}
-                    disabled={index === 0}
                     className="h-8 w-8"
+                    onClick={() => moveItem(index, 'up')}
+                    disabled={index === 0}
                   >
                     <ArrowUp className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => moveDown(index)}
-                    disabled={index === navItems.length - 1}
                     className="h-8 w-8"
+                    onClick={() => moveItem(index, 'down')}
+                    disabled={index === menuOrder.length - 1}
                   >
                     <ArrowDown className="h-4 w-4" />
                   </Button>
@@ -106,9 +102,6 @@ export function PreferenciasTab() {
               </div>
             ))}
           </div>
-          <Button onClick={saveOrder} className="w-full sm:w-auto">
-            Salvar Ordem do Menu
-          </Button>
         </CardContent>
       </Card>
     </div>

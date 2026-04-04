@@ -1,15 +1,5 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useState, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Building2,
   Users,
@@ -19,179 +9,356 @@ import {
   Building,
   ShieldCheck,
   Settings2,
+  BarChart3,
+  LineChart as LineChartIcon,
+  AreaChart as AreaChartIcon,
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Bar,
+  BarChart,
+  Line,
+  LineChart,
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { usePreferences } from '@/hooks/use-preferences'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
-const allMetrics = [
+const METRICS_CONFIG = [
   { id: 'admin', label: 'Administradoras Parceiras', icon: Building, color: 'text-blue-500' },
-  { id: 'condo', label: 'Total de Condomínios', icon: Building2, color: 'text-indigo-500' },
-  { id: 'residents', label: 'Total de Moradores', icon: Users, color: 'text-green-500' },
-  { id: 'sindicos', label: 'Total de Síndicos', icon: ShieldCheck, color: 'text-orange-500' },
-  {
-    id: 'revenue',
-    label: 'Receita',
-    icon: TrendingUp,
-    color: 'text-emerald-500',
-    isCurrency: true,
-  },
-  { id: 'expense', label: 'Despesa', icon: TrendingDown, color: 'text-red-500', isCurrency: true },
-  { id: 'profit', label: 'Lucro', icon: Wallet, color: 'text-blue-600', isCurrency: true },
+  { id: 'condominios', label: 'Total de Condomínios', icon: Building2, color: 'text-indigo-500' },
+  { id: 'moradores', label: 'Total de Moradores', icon: Users, color: 'text-orange-500' },
+  { id: 'sindicos', label: 'Total de Síndicos', icon: ShieldCheck, color: 'text-purple-500' },
+  { id: 'receita', label: 'Receita Total', icon: TrendingUp, color: 'text-green-500' },
+  { id: 'despesa', label: 'Despesa Total', icon: TrendingDown, color: 'text-red-500' },
+  { id: 'lucro', label: 'Lucro Consolidado', icon: Wallet, color: 'text-emerald-500' },
 ]
 
-const mockData = {
-  Mês: {
-    admin: 12,
-    condo: 45,
-    residents: 1250,
-    sindicos: 30,
-    revenue: 150000,
-    expense: 90000,
-    profit: 60000,
-  },
-  Trimestre: {
-    admin: 14,
-    condo: 48,
-    residents: 1300,
-    sindicos: 32,
-    revenue: 450000,
-    expense: 270000,
-    profit: 180000,
-  },
-  Semestre: {
-    admin: 15,
-    condo: 50,
-    residents: 1400,
-    sindicos: 35,
-    revenue: 900000,
-    expense: 550000,
-    profit: 350000,
-  },
-  Ano: {
-    admin: 18,
-    condo: 60,
-    residents: 1800,
-    sindicos: 40,
-    revenue: 1800000,
-    expense: 1100000,
-    profit: 700000,
-  },
-  'All Time': {
-    admin: 25,
-    condo: 120,
-    residents: 3500,
-    sindicos: 85,
-    revenue: 5500000,
-    expense: 3200000,
-    profit: 2300000,
-  },
+const MOCK_DATA = {
+  admin: { value: '12', trend: '+2 esse mês' },
+  condominios: { value: '48', trend: '+5 esse mês' },
+  moradores: { value: '1.240', trend: '+120 esse mês' },
+  sindicos: { value: '36', trend: '+4 esse mês' },
+  receita: { value: 'R$ 485.000', trend: '+15% vs último período' },
+  despesa: { value: 'R$ 312.000', trend: '+5% vs último período' },
+  lucro: { value: 'R$ 173.000', trend: '+22% vs último período' },
+}
+
+const generateChartData = (period: string) => {
+  const data = []
+  let points = 0
+  let labelPrefix = ''
+
+  switch (period) {
+    case 'mes':
+      points = 4
+      labelPrefix = 'Sem. '
+      break
+    case 'trimestre':
+      points = 3
+      labelPrefix = 'Mês '
+      break
+    case 'semestre':
+      points = 6
+      labelPrefix = 'Mês '
+      break
+    case 'ano':
+      points = 12
+      labelPrefix = 'Mês '
+      break
+    case 'all':
+      points = 5
+      labelPrefix = 'Ano '
+      break
+    default:
+      points = 6
+      labelPrefix = 'Mês '
+      break
+  }
+
+  let baseReceita =
+    period === 'all'
+      ? 5000000
+      : period === 'ano'
+        ? 400000
+        : period === 'semestre'
+          ? 400000
+          : period === 'trimestre'
+            ? 400000
+            : 120000
+  let baseDespesa = baseReceita * 0.65
+
+  for (let i = 1; i <= points; i++) {
+    const rMulti = 1 + (Math.random() * 0.4 - 0.1)
+    const dMulti = 1 + (Math.random() * 0.3 - 0.1)
+
+    data.push({
+      name: `${labelPrefix}${period === 'all' ? 2020 + i : i}`,
+      receita: Math.round(baseReceita * rMulti),
+      despesa: Math.round(baseDespesa * dMulti),
+    })
+  }
+  return data
 }
 
 export function AdminOverview() {
-  const [period, setPeriod] = useState('Mês')
-  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(allMetrics.map((m) => m.id))
+  const { visibleMetrics, setVisibleMetrics } = usePreferences()
+  const [period, setPeriod] = useState('semestre')
+  const [chartType, setChartType] = useState('bar')
 
-  const currentData = mockData[period as keyof typeof mockData] || mockData['Mês']
+  const chartData = useMemo(() => generateChartData(period), [period])
 
   const toggleMetric = (id: string) => {
-    setVisibleMetrics((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]))
+    if (visibleMetrics.includes(id)) {
+      if (visibleMetrics.length > 1) {
+        setVisibleMetrics(visibleMetrics.filter((m) => m !== id))
+      }
+    } else {
+      setVisibleMetrics([...visibleMetrics, id])
+    }
   }
 
-  const formatValue = (value: number, isCurrency?: boolean) => {
-    if (isCurrency) {
-      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-    }
-    return value.toLocaleString('pt-BR')
+  const chartConfig = {
+    receita: { label: 'Receita', color: 'hsl(var(--chart-1))' },
+    despesa: { label: 'Despesa', color: 'hsl(var(--chart-2))' },
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-3xl font-bold tracking-tight">Visão Geral</h2>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm">
+        <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Selecione o período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Mês">Mês Atual</SelectItem>
-              <SelectItem value="Trimestre">Trimestre</SelectItem>
-              <SelectItem value="Semestre">Semestre</SelectItem>
-              <SelectItem value="Ano">Ano</SelectItem>
-              <SelectItem value="All Time">All Time</SelectItem>
+              <SelectItem value="mes">Mês</SelectItem>
+              <SelectItem value="trimestre">Trimestre</SelectItem>
+              <SelectItem value="semestre">Semestre</SelectItem>
+              <SelectItem value="ano">Ano</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
             </SelectContent>
           </Select>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Settings2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Personalizar</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72" align="end">
-              <div className="space-y-4">
-                <h4 className="font-medium text-sm border-b pb-2">Métricas Visíveis</h4>
-                <div className="space-y-3">
-                  {allMetrics.map((metric) => (
-                    <div key={metric.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`metric-${metric.id}`}
-                        checked={visibleMetrics.includes(metric.id)}
-                        onCheckedChange={() => toggleMetric(metric.id)}
-                      />
-                      <label
-                        htmlFor={`metric-${metric.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {metric.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Settings2 className="w-4 h-4" />
+              Personalizar Métricas
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Métricas Visíveis</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {METRICS_CONFIG.map((metric) => (
+              <DropdownMenuCheckboxItem
+                key={metric.id}
+                checked={visibleMetrics.includes(metric.id)}
+                onCheckedChange={() => toggleMetric(metric.id)}
+              >
+                {metric.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {visibleMetrics.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-lg bg-secondary/20">
-          <Settings2 className="h-10 w-10 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            Nenhuma métrica selecionada. Clique em personalizar para exibir os indicadores.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {allMetrics
-            .filter((m) => visibleMetrics.includes(m.id))
-            .map((metric, index) => {
-              const Icon = metric.icon
-              const value = currentData[metric.id as keyof typeof currentData] || 0
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {METRICS_CONFIG.filter((m) => visibleMetrics.includes(m.id)).map((metric) => {
+          const Icon = metric.icon
+          const data = MOCK_DATA[metric.id as keyof typeof MOCK_DATA]
 
-              return (
-                <Card
-                  key={metric.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {metric.label}
-                    </CardTitle>
-                    <div className={`p-2 rounded-md bg-secondary/50 ${metric.color}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {formatValue(value as number, metric.isCurrency)}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-        </div>
-      )}
+          return (
+            <Card
+              key={metric.id}
+              className="shadow-sm hover:shadow-md transition-shadow duration-200"
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {metric.label}
+                </CardTitle>
+                <div className={`p-2 rounded-lg bg-muted/50 ${metric.color}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data.value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{data.trend}</p>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      <Card className="shadow-sm">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle>Evolução Financeira</CardTitle>
+            <CardDescription>
+              Comparativo de receitas e despesas no período selecionado
+            </CardDescription>
+          </div>
+          <ToggleGroup
+            type="single"
+            value={chartType}
+            onValueChange={(v) => v && setChartType(v)}
+            className="bg-muted/50 p-1 rounded-lg"
+          >
+            <ToggleGroupItem value="bar" aria-label="Gráfico de Barras">
+              <BarChart3 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="line" aria-label="Gráfico de Linha">
+              <LineChartIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="area" aria-label="Gráfico de Área">
+              <AreaChartIcon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-[350px] w-full">
+            {chartType === 'bar' && (
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `R$ ${value / 1000}k`}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend verticalAlign="top" height={36} />
+                <Bar
+                  dataKey="receita"
+                  fill="var(--color-receita)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+                <Bar
+                  dataKey="despesa"
+                  fill="var(--color-despesa)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
+                />
+              </BarChart>
+            )}
+            {chartType === 'line' && (
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `R$ ${value / 1000}k`}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend verticalAlign="top" height={36} />
+                <Line
+                  type="monotone"
+                  dataKey="receita"
+                  stroke="var(--color-receita)"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="despesa"
+                  stroke="var(--color-despesa)"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            )}
+            {chartType === 'area' && (
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-receita)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-receita)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-despesa)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-despesa)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `R$ ${value / 1000}k`}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend verticalAlign="top" height={36} />
+                <Area
+                  type="monotone"
+                  dataKey="receita"
+                  stroke="var(--color-receita)"
+                  fillOpacity={1}
+                  fill="url(#colorReceita)"
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="despesa"
+                  stroke="var(--color-despesa)"
+                  fillOpacity={1}
+                  fill="url(#colorDespesa)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            )}
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   )
 }
