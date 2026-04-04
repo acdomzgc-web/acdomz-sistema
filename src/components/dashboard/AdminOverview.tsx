@@ -85,7 +85,7 @@ const mockData = {
   },
 }
 
-export default function AdminOverview() {
+export function AdminOverview() {
   const [period, setPeriod] = useState('Mês')
   const [visibleMetrics, setVisibleMetrics] = useState<string[]>(allMetrics.map((m) => m.id))
 
