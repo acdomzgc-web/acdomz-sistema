@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Save, Info, Calculator, CheckCircle2 } from 'lucide-react'
+import { Save, Info, Calculator, CheckCircle2, ShieldAlert } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   BASE_VALUE,
