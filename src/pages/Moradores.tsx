@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, MessageCircle, Edit, MoreHorizontal, PowerOff } from 'lucide-react'
+import { Plus, Search, MessageCircle, Edit, MoreHorizontal, PowerOff, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
@@ -37,21 +37,22 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 
-type Role = 'Proprietário' | 'Locatário' | 'Morador' | 'Conselho Consultivo' | 'Conselho Fiscal'
-
-const roleColors: Record<Role | string, string> = {
-  Proprietário: 'bg-[#1a3a52] text-white hover:bg-[#1a3a52]/90',
-  Locatário: 'bg-[#10B981] text-white hover:bg-[#10B981]/90',
+const funcaoColors: Record<string, string> = {
   Morador: 'bg-[#9CA3AF] text-white hover:bg-[#9CA3AF]/90',
   'Conselho Consultivo': 'bg-[#F59E0B] text-white hover:bg-[#F59E0B]/90',
   'Conselho Fiscal': 'bg-[#EF4444] text-white hover:bg-[#EF4444]/90',
+}
+
+const perfilColors: Record<string, string> = {
+  Proprietário: 'bg-[#1a3a52] text-white hover:bg-[#1a3a52]/90',
+  Locatário: 'bg-[#10B981] text-white hover:bg-[#10B981]/90',
 }
 
 export default function Moradores() {
   const [residents, setResidents] = useState<any[]>([])
   const [condos, setCondos] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState('all')
-  const [selectedRole, setSelectedRole] = useState('all')
+  const [selectedFuncao, setSelectedFuncao] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [open, setOpen] = useState(false)
   const [editingRes, setEditingRes] = useState<any>(null)
@@ -60,7 +61,7 @@ export default function Moradores() {
   const loadData = async () => {
     let query = supabase.from('moradores').select('*, condominios(name)').order('name')
     if (selectedCondo !== 'all') query = query.eq('condominio_id', selectedCondo)
-    if (selectedRole !== 'all') query = query.eq('role', selectedRole)
+    if (selectedFuncao !== 'all') query = query.eq('funcao', selectedFuncao)
     const { data } = await query
     if (data) setResidents(data)
   }
@@ -75,7 +76,7 @@ export default function Moradores() {
 
   useEffect(() => {
     loadData()
-  }, [selectedCondo, selectedRole])
+  }, [selectedCondo, selectedFuncao])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -85,7 +86,8 @@ export default function Moradores() {
       unit: formData.get('unit') as string,
       email: formData.get('email') as string,
       phone: formData.get('phone') as string,
-      role: formData.get('role') as string,
+      perfil_tipo: formData.get('perfil_tipo') as string,
+      funcao: formData.get('funcao') as string,
       condominio_id: formData.get('condominio_id') as string,
       status: (formData.get('status') as string) || 'Ativo',
     }
@@ -114,6 +116,17 @@ export default function Moradores() {
     await supabase.from('moradores').update({ status: newStatus }).eq('id', id)
     toast({ title: `Morador ${newStatus === 'Ativo' ? 'ativado' : 'inativado'} com sucesso!` })
     loadData()
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este morador?')) return
+    const { error } = await supabase.from('moradores').delete().eq('id', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Morador excluído com sucesso!' })
+      loadData()
+    }
   }
 
   const filtered = residents.filter(
@@ -190,22 +203,40 @@ export default function Moradores() {
                   />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Perfil</Label>
-                  <Select name="role" defaultValue={editingRes?.role || 'Morador'} required>
+                  <Select
+                    name="perfil_tipo"
+                    defaultValue={editingRes?.perfil_tipo || 'Proprietário'}
+                    required
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
+                      <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Proprietário">Proprietário</SelectItem>
                       <SelectItem value="Locatário">Locatário</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Função</Label>
+                  <Select name="funcao" defaultValue={editingRes?.funcao || 'Morador'} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a função" />
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="Morador">Morador</SelectItem>
                       <SelectItem value="Conselho Consultivo">Conselho Consultivo</SelectItem>
                       <SelectItem value="Conselho Fiscal">Conselho Fiscal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>Telefone / WhatsApp</Label>
                   <Input
@@ -214,16 +245,17 @@ export default function Moradores() {
                     placeholder="(00) 00000-0000"
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label>E-mail</Label>
+                  <Input
+                    name="email"
+                    type="email"
+                    defaultValue={editingRes?.email}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>E-mail</Label>
-                <Input
-                  name="email"
-                  type="email"
-                  defaultValue={editingRes?.email}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
+
               {editingRes && (
                 <div className="grid gap-2">
                   <Label>Status</Label>
@@ -274,15 +306,13 @@ export default function Moradores() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={selectedRole} onValueChange={setSelectedRole}>
+          <Select value={selectedFuncao} onValueChange={setSelectedFuncao}>
             <SelectTrigger className="w-[180px] bg-background">
-              <SelectValue placeholder="Filtrar por Perfil" />
+              <SelectValue placeholder="Filtrar por Função" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os Perfis</SelectItem>
-              <SelectItem value="Proprietário">Proprietários</SelectItem>
-              <SelectItem value="Locatário">Locatários</SelectItem>
-              <SelectItem value="Morador">Moradores</SelectItem>
+              <SelectItem value="all">Todas as Funções</SelectItem>
+              <SelectItem value="Morador">Morador</SelectItem>
               <SelectItem value="Conselho Consultivo">Conselho Consultivo</SelectItem>
               <SelectItem value="Conselho Fiscal">Conselho Fiscal</SelectItem>
             </SelectContent>
@@ -292,7 +322,7 @@ export default function Moradores() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>Nome & Perfil</TableHead>
+                <TableHead>Nome & Perfis</TableHead>
                 <TableHead>Condomínio / Unidade</TableHead>
                 <TableHead>Contatos</TableHead>
                 <TableHead className="text-center">Status</TableHead>
@@ -304,11 +334,18 @@ export default function Moradores() {
                 <TableRow key={res.id} className="hover:bg-muted/30">
                   <TableCell>
                     <div className="font-medium text-foreground">{res.name}</div>
-                    <Badge
-                      className={`mt-1 text-[10px] py-0 px-1.5 ${roleColors[res.role || 'Morador'] || roleColors['Morador']}`}
-                    >
-                      {res.role || 'Morador'}
-                    </Badge>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      <Badge
+                        className={`text-[10px] py-0 px-1.5 ${perfilColors[res.perfil_tipo || 'Proprietário'] || perfilColors['Proprietário']}`}
+                      >
+                        {res.perfil_tipo || 'Proprietário'}
+                      </Badge>
+                      <Badge
+                        className={`text-[10px] py-0 px-1.5 ${funcaoColors[res.funcao || 'Morador'] || funcaoColors['Morador']}`}
+                      >
+                        {res.funcao || 'Morador'}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-primary">{res.condominios?.name || '-'}</div>
@@ -362,13 +399,19 @@ export default function Moradores() {
                           <Edit className="h-4 w-4 text-muted-foreground" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                          className="cursor-pointer gap-2 text-amber-600 focus:text-amber-600"
                           onClick={() =>
                             handleStatusChange(res.id, res.status === 'Ativo' ? 'Inativo' : 'Ativo')
                           }
                         >
                           <PowerOff className="h-4 w-4" />{' '}
                           {res.status === 'Ativo' ? 'Inativar Morador' : 'Ativar Morador'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(res.id)}
+                        >
+                          <Trash2 className="h-4 w-4" /> Excluir Morador
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

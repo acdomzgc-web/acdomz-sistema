@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Edit, Search, Building } from 'lucide-react'
+import { Plus, Edit, Search, Building, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -97,6 +97,23 @@ export default function Condominios() {
     setOpen(false)
     setEditingCondo(null)
     loadData()
+  }
+
+  const handleDelete = async (id: string) => {
+    if (
+      !confirm(
+        'Deseja realmente excluir este condomínio? Todos os dados vinculados podem ser perdidos.',
+      )
+    )
+      return
+
+    const { error } = await supabase.from('condominios').delete().eq('id', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+    } else {
+      toast({ title: 'Condomínio excluído com sucesso!' })
+      loadData()
+    }
   }
 
   const filteredCondos = condos.filter(
@@ -200,7 +217,7 @@ export default function Condominios() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Síndico Atual (Morador ou Profissional)</Label>
+                      <Label>Síndico Atual</Label>
                       <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || ''}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione..." />
@@ -208,7 +225,7 @@ export default function Condominios() {
                         <SelectContent>
                           {profiles.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.name} ({p.role})
+                              {p.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -312,6 +329,14 @@ export default function Condominios() {
                         className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(condo.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/20"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>

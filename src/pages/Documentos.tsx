@@ -142,8 +142,12 @@ export default function Documentos() {
       toast({ title: 'Upload concluído!' })
 
       const targetFolder = folders.find((f) => f.id === activeFolder)
-      if (targetFolder && targetFolder.name.includes('FINANC') && file.type === 'application/pdf') {
-        toast({ title: 'Processando DRE...', description: 'Extraindo dados via IA.' })
+      if (
+        targetFolder &&
+        targetFolder.name.toUpperCase().includes('DRE') &&
+        file.type === 'application/pdf'
+      ) {
+        toast({ title: 'Processando DRE...', description: 'Extraindo dados financeiros.' })
         supabase.functions.invoke('extrair-dre-condominio', {
           body: { condominio_id: selectedCondo, file_path: filePath },
         })
@@ -200,7 +204,7 @@ export default function Documentos() {
   const activeFiles = files.filter((f) => f.folder === activeFolder)
 
   return (
-    <div className="space-y-6 animate-fade-in h-full flex flex-col p-6">
+    <div className="space-y-6 animate-fade-in h-full flex flex-col p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Documentos</h1>
@@ -208,7 +212,7 @@ export default function Documentos() {
         </div>
         <div className="flex items-center gap-4">
           <Select value={selectedCondo} onValueChange={setSelectedCondo}>
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-[250px] bg-background">
               <SelectValue placeholder="Selecione o Condomínio" />
             </SelectTrigger>
             <SelectContent>
@@ -233,7 +237,7 @@ export default function Documentos() {
               <Input
                 value={folderName}
                 onChange={(e) => setFolderName(e.target.value)}
-                placeholder="Ex: Contratos"
+                placeholder="Ex: Contratos, DRE, Inadimplência"
               />
             </div>
           </div>
@@ -246,192 +250,193 @@ export default function Documentos() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid md:grid-cols-4 gap-6 flex-1">
-        <Card className="md:col-span-1 shadow-sm border-border/50 h-fit">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
-                Pastas
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => {
-                  setEditingFolder(null)
-                  setFolderName('')
-                  setFolderDialogOpen(true)
-                }}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+      <div className="space-y-6 flex-1">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-lg text-primary">Diretórios</h3>
+          <Button
+            variant="outline"
+            className="gap-2 bg-background"
+            onClick={() => {
+              setEditingFolder(null)
+              setFolderName('')
+              setFolderDialogOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" /> Nova Pasta
+          </Button>
+        </div>
+
+        {folders.length === 0 ? (
+          <div className="p-8 text-center bg-muted/20 border border-dashed rounded-xl text-muted-foreground">
+            Nenhuma pasta criada para este condomínio.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {folders.map((folder) => {
               const isActive = activeFolder === folder.id
               const Icon = getIcon(folder.icon)
               const count = files.filter((f) => f.folder === folder.id).length
               return (
-                <div
+                <Card
                   key={folder.id}
-                  className={`group w-full flex items-center justify-between p-2 rounded-lg text-sm transition-all duration-200 ${isActive ? 'bg-primary text-primary-foreground font-medium shadow-md' : 'hover:bg-muted text-foreground'}`}
+                  className={`group cursor-pointer transition-all duration-200 hover:shadow-md ${isActive ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                  onClick={() => setActiveFolder(folder.id)}
                 >
-                  <button
-                    onClick={() => setActiveFolder(folder.id)}
-                    className="flex items-center gap-3 flex-1 text-left truncate"
-                  >
-                    <Icon
-                      className={`h-5 w-5 shrink-0 ${isActive ? 'text-secondary' : 'text-muted-foreground'}`}
-                    />
-                    <span className="truncate pr-2">{folder.name}</span>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Badge
-                      variant="secondary"
-                      className={
-                        isActive ? 'bg-primary-foreground/20 text-white border-0' : 'bg-background'
-                      }
+                  <CardContent className="p-4 flex flex-col items-center justify-center text-center space-y-3 relative">
+                    <div className="absolute top-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingFolder(folder)
+                              setFolderName(folder.name)
+                              setFolderDialogOpen(true)
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4 mr-2" /> Renomear
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteFolder(folder.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Excluir Pasta
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div
+                      className={`p-3 rounded-full ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
                     >
-                      {count}
-                    </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-6 w-6 opacity-0 group-hover:opacity-100 ${isActive ? 'text-white hover:bg-white/20' : 'text-muted-foreground'}`}
-                        >
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditingFolder(folder)
-                            setFolderName(folder.name)
-                            setFolderDialogOpen(true)
-                          }}
-                        >
-                          <Edit2 className="h-4 w-4 mr-2" /> Renomear
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeleteFolder(folder.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Excluir Pasta
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div className="w-full">
+                      <p className="font-medium text-sm truncate px-1" title={folder.name}>
+                        {folder.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {count} arquivo{count !== 1 && 's'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               )
             })}
-            {folders.length === 0 && (
-              <div className="text-sm text-center text-muted-foreground py-4">
-                Nenhuma pasta criada.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="md:col-span-3 space-y-6">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-          />
-          <div
-            onClick={!uploading && selectedCondo && activeFolder ? handleUploadClick : undefined}
-            className={`border-2 border-dashed border-border rounded-xl bg-card p-10 flex flex-col items-center justify-center text-center transition-colors group ${!selectedCondo || !activeFolder ? 'opacity-50 cursor-not-allowed' : uploading ? 'cursor-wait opacity-80' : 'cursor-pointer hover:bg-muted/50'}`}
-          >
-            <div className="h-16 w-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              {uploading ? (
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              ) : (
-                <UploadCloud className="h-8 w-8 text-primary" />
-              )}
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">
-              {uploading ? 'Enviando arquivo...' : 'Arraste e solte seus arquivos aqui'}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              ou clique para selecionar do seu computador
-            </p>
-            <Button
-              disabled={uploading || !selectedCondo || !activeFolder}
-              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (selectedCondo && activeFolder) handleUploadClick()
-              }}
-            >
-              Selecionar Arquivos
-            </Button>
           </div>
+        )}
 
-          <Card className="shadow-sm border-border/50">
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {activeFiles.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">
-                    Nenhum documento encontrado nesta pasta.
-                  </div>
-                ) : (
-                  activeFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center shrink-0">
-                          <FileText className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-primary text-sm line-clamp-1">
-                            {file.name}
-                          </p>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                            <span>{new Date(file.created_at).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span>{Math.round(Number(file.size || 0) / 1024)} KB</span>
+        {activeFolder && (
+          <div className="mt-8 space-y-4 animate-fade-in-up">
+            <h3 className="font-semibold text-lg text-primary border-b pb-2">
+              Arquivos em {folders.find((f) => f.id === activeFolder)?.name}
+            </h3>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+            />
+
+            <div className="grid md:grid-cols-[1fr_2fr] gap-6 items-start">
+              <div
+                onClick={
+                  !uploading && selectedCondo && activeFolder ? handleUploadClick : undefined
+                }
+                className={`border-2 border-dashed border-border rounded-xl bg-card p-8 flex flex-col items-center justify-center text-center transition-colors group ${!selectedCondo || !activeFolder ? 'opacity-50 cursor-not-allowed' : uploading ? 'cursor-wait opacity-80' : 'cursor-pointer hover:bg-muted/50'}`}
+              >
+                <div className="h-14 w-14 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  {uploading ? (
+                    <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                  ) : (
+                    <UploadCloud className="h-6 w-6 text-primary" />
+                  )}
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1">
+                  {uploading ? 'Enviando arquivo...' : 'Arraste e solte ou clique'}
+                </h3>
+                <p className="text-xs text-muted-foreground">Formatos suportados: PDF, DOC, XLS</p>
+              </div>
+
+              <Card className="shadow-sm border-border/50">
+                <CardContent className="p-0">
+                  <div className="divide-y max-h-[400px] overflow-y-auto">
+                    {activeFiles.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground">
+                        Nenhum documento encontrado nesta pasta.
+                      </div>
+                    ) : (
+                      activeFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded bg-red-100 flex items-center justify-center shrink-0">
+                              <FileText className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-primary text-sm line-clamp-1">
+                                {file.name}
+                              </p>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                                <span>•</span>
+                                <span>{Math.round(Number(file.size || 0) / 1024)} KB</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:bg-primary/10"
+                              title="Visualizar"
+                              onClick={() => {
+                                if (file.file_path) {
+                                  const { data } = supabase.storage
+                                    .from('documentos')
+                                    .getPublicUrl(file.file_path)
+                                  window.open(data.publicUrl, '_blank', 'noopener,noreferrer')
+                                }
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteFile(file.id, file.file_path)}
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-primary hover:bg-primary/10"
-                          title="Visualizar"
-                          onClick={() => {
-                            if (file.file_path) {
-                              const { data } = supabase.storage
-                                .from('documentos')
-                                .getPublicUrl(file.file_path)
-                              window.open(data.publicUrl, '_blank', 'noopener,noreferrer')
-                            }
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteFile(file.id, file.file_path)}
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

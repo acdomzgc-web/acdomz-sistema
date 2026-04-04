@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Save, Info } from 'lucide-react'
+import { Save, Info, Calculator, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   BASE_VALUE,
@@ -103,82 +103,90 @@ export default function CalculadoraHonorarios() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 animate-fade-in-up">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Calculadora de Honorários</h2>
+    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 animate-fade-in max-w-[1400px] mx-auto">
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 border-b pb-6">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight text-primary flex items-center gap-3">
+            <Calculator className="h-8 w-8 text-secondary" />
+            Precificação de Honorários
+          </h2>
+          <p className="text-muted-foreground text-lg">
+            Simule os honorários da base operacional utilizando as variáveis estratégicas 2026.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 bg-muted/30 p-2 rounded-lg border">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Modo de Cálculo</Label>
+            <Select
+              value={isAuto ? 'auto' : 'manual'}
+              onValueChange={(val) => setIsAuto(val === 'auto')}
+            >
+              <SelectTrigger className="w-[180px] h-9 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Via Condomínio</SelectItem>
+                <SelectItem value="manual">Simulação Livre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Condomínio Vínculo</Label>
+            <Select value={selectedCondominioId} onValueChange={setSelectedCondominioId}>
+              <SelectTrigger className="w-[220px] h-9 bg-background">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem vínculo</SelectItem>
+                {condominios.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-12">
-        <div className="md:col-span-7 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Parâmetros do Cálculo</CardTitle>
-              <CardDescription>
-                Preencha os dados abaixo para simular os honorários do condomínio.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2 flex flex-col sm:flex-row gap-4 items-end">
-                <div className="w-full sm:flex-1 space-y-2">
-                  <Label>Modo de Cálculo</Label>
-                  <Select
-                    value={isAuto ? 'auto' : 'manual'}
-                    onValueChange={(val) => setIsAuto(val === 'auto')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Automático (Extrai dados do Condomínio)</SelectItem>
-                      <SelectItem value="manual">Manual (Simulação Livre)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full sm:flex-1 space-y-2">
-                  <Label>Condomínio Referência</Label>
-                  <Select value={selectedCondominioId} onValueChange={setSelectedCondominioId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um condomínio..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {condominios.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid sm:grid-cols-2 gap-6 items-start">
-                <div className="space-y-2">
-                  <Label>Número de Lotes / Unidades</Label>
+      <div className="grid gap-8 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-7 space-y-8">
+          <Card className="shadow-md border-primary/10 overflow-hidden">
+            <div className="bg-primary/5 p-4 border-b flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-primary">Parâmetros Ativos</h3>
+            </div>
+            <CardContent className="p-6 space-y-8">
+              <div className="grid sm:grid-cols-2 gap-8">
+                <div className="space-y-3 bg-muted/10 p-4 rounded-xl border border-muted">
+                  <Label className="text-base text-foreground font-semibold">
+                    Quantidade de Lotes
+                  </Label>
                   <Input
                     type="number"
                     min={0}
+                    className="text-lg h-12 bg-background font-mono"
                     value={lotes}
                     disabled={isAuto && selectedCondominioId !== 'none'}
                     onChange={(e) => setLotes(Number(e.target.value))}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Variável baseada na quantidade. O valor é aplicado em cascata conforme a faixa
-                    refinada.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Valor aplicado em cascata baseada na tabela de escala.
                   </p>
                 </div>
-                <FaixasLotesTable />
-              </div>
-              <Separator />
-              <div className="grid sm:grid-cols-2 gap-6 items-start">
-                <div className="space-y-2">
-                  <Label>Trilha de Densidade</Label>
+
+                <div className="space-y-3 bg-muted/10 p-4 rounded-xl border border-muted">
+                  <Label className="text-base text-foreground font-semibold">
+                    Trilha de Densidade
+                  </Label>
                   <Select
                     value={densidadeId}
                     onValueChange={setDensidadeId}
                     disabled={isAuto && selectedCondominioId !== 'none'}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-lg h-12 bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -189,95 +197,122 @@ export default function CalculadoraHonorarios() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Multiplicador aplicado sobre o subtotal (Base + Lotes + Áreas) e define o teto
-                    máximo comercial por lote.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Define o multiplicador e o limitador (teto) de proteção.
                   </p>
                 </div>
-                <DensidadeTable />
               </div>
+
               <Separator />
-              <div className="space-y-2">
-                <Label>Áreas Comuns (Qtd. Espaços)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={areasComuns}
-                  disabled={isAuto && selectedCondominioId !== 'none'}
-                  onChange={(e) => setAreasComuns(Number(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <Info className="h-3 w-3 mr-1" /> Cada espaço operacional (piscina, salão, quadra)
-                  adiciona {formatCurrency(VALOR_AREA_COMUM)} (10% do SMN) à base.
-                </p>
+
+              <div className="space-y-4">
+                <Label className="text-base text-foreground font-semibold">
+                  Espaços de Área Comum
+                </Label>
+                <div className="flex gap-4 items-center">
+                  <Input
+                    type="number"
+                    min={0}
+                    className="w-32 text-lg h-12 text-center font-mono"
+                    value={areasComuns}
+                    disabled={isAuto && selectedCondominioId !== 'none'}
+                    onChange={(e) => setAreasComuns(Number(e.target.value))}
+                  />
+                  <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg flex-1 border">
+                    <Info className="h-4 w-4 inline-block mr-2 text-secondary" />
+                    Cada espaço adiciona {formatCurrency(VALOR_AREA_COMUM)} (10% do SMN).
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FaixasLotesTable />
+            <DensidadeTable />
+          </div>
         </div>
 
-        <div className="md:col-span-5">
-          <Card className="sticky top-6 border-primary/20 shadow-md">
-            <CardHeader className="bg-primary/5 border-b pb-4">
-              <CardTitle className="text-xl">Resumo do Cálculo</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="space-y-3 text-sm">
-                <p className="font-semibold text-muted-foreground">1. Honorário Técnico</p>
-                <div className="font-mono bg-muted/50 p-3 rounded-md text-xs space-y-1">
-                  <p>= [2 SMN + Var. Lotes + (Áreas × 10% SMN)] × Densidade</p>
-                  <p>
-                    = [{formatCurrency(BASE_VALUE)} + {formatCurrency(calc.variavelLotes)} +{' '}
-                    {formatCurrency(calc.valorAreasComuns)}] ×{' '}
-                    {calc.densidade.multiplier.toFixed(2)}x
-                  </p>
-                  <p>
-                    = [{formatCurrency(calc.subtotal)}] × {calc.densidade.multiplier.toFixed(2)}x
-                  </p>
-                  <p className="pt-1 mt-1 border-t border-border/50 text-foreground font-bold">
-                    = {formatCurrency(calc.honorarioTecnico)}
-                  </p>
+        <div className="lg:col-span-5">
+          <Card className="sticky top-6 border-primary/20 shadow-xl overflow-hidden rounded-2xl">
+            <div className="bg-primary p-6 text-primary-foreground text-center">
+              <h3 className="text-lg font-medium opacity-90">Honorário Final Projetado</h3>
+              <p className="text-5xl font-black mt-2 tracking-tight">
+                {formatCurrency(calc.honorarioFinal)}
+              </p>
+              <p className="text-sm mt-3 opacity-80 font-mono">
+                Por unidade: {formatCurrency(calc.honorarioFinal / (lotes || 1))}
+              </p>
+            </div>
+
+            <CardContent className="p-6 space-y-6 bg-background">
+              <div className="space-y-4 text-sm">
+                <h4 className="font-semibold text-primary uppercase tracking-wider text-xs">
+                  Composição do Técnico
+                </h4>
+
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Custo Fixo (2 SMN)</span>
+                  <span className="font-mono font-medium">{formatCurrency(BASE_VALUE)}</span>
                 </div>
-              </div>
-              <Separator />
-              <div className="space-y-3 text-sm">
-                <p className="font-semibold text-muted-foreground">
-                  2. Limites Estratégicos (Teto)
-                </p>
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Teto por Lote ({calc.densidade.name}):</span>
-                  <span className="font-mono">{formatCurrency(calc.densidade.teto_por_lote)}</span>
-                </div>
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Teto Total ({lotes} lotes):</span>
-                  <span className="font-mono text-destructive">
-                    {formatCurrency(calc.teto_total)}
+
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Variável Lotes</span>
+                  <span className="font-mono font-medium text-green-600">
+                    +{formatCurrency(calc.variavelLotes)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span>Valor Limitado ao Teto:</span>
-                  <span className="font-mono font-medium">{formatCurrency(calc.limitadoTeto)}</span>
+
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Áreas Comuns</span>
+                  <span className="font-mono font-medium text-green-600">
+                    +{formatCurrency(calc.valorAreasComuns)}
+                  </span>
                 </div>
-              </div>
-              <Separator />
-              <div className="space-y-3 text-sm">
-                <p className="font-semibold text-primary">3. Honorário Final</p>
-                <p className="text-xs text-muted-foreground">
-                  max(Valor Fixo Base, Técnico limitado ao teto)
-                </p>
-                <div className="p-4 bg-primary text-primary-foreground rounded-lg flex items-center justify-between shadow-sm">
-                  <span className="font-medium">Total Mensal</span>
-                  <span className="text-2xl font-black tracking-tight">
-                    {formatCurrency(calc.honorarioFinal)}
+
+                <div className="flex justify-between items-center py-2 bg-muted/30 px-2 rounded">
+                  <span className="font-semibold">Subtotal</span>
+                  <span className="font-mono font-bold">{formatCurrency(calc.subtotal)}</span>
+                </div>
+
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Multiplicador Densidade</span>
+                  <span className="font-mono font-medium text-secondary">
+                    x {calc.densidade.multiplier.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2">
+                  <span className="font-semibold text-primary">Honorário Técnico</span>
+                  <span className="font-mono font-bold text-primary">
+                    {formatCurrency(calc.honorarioTecnico)}
                   </span>
                 </div>
               </div>
+
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 space-y-3">
+                <h4 className="font-semibold text-amber-800 uppercase tracking-wider text-xs flex items-center gap-2">
+                  <ShieldAlert className="h-3 w-3" /> Trava Comercial (Teto)
+                </h4>
+                <div className="flex justify-between items-center text-sm text-amber-900/80">
+                  <span>Limite da Trilha ({calc.densidade.name}):</span>
+                  <span className="font-mono font-medium">{formatCurrency(calc.teto_total)}</span>
+                </div>
+                {calc.honorarioTecnico > calc.teto_total && calc.teto_total > 0 && (
+                  <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">
+                    Valor limitado pelo teto da densidade para viabilidade comercial.
+                  </p>
+                )}
+              </div>
+
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="w-full h-12 text-base shadow-sm"
+                size="lg"
+                className="w-full text-base font-semibold shadow-md hover:shadow-lg transition-all"
               >
                 <Save className="mr-2 h-5 w-5" />
-                Salvar Cálculo
+                Salvar Simulação
               </Button>
             </CardContent>
           </Card>
