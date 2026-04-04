@@ -1,409 +1,197 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Building,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Building2,
   Users,
-  DollarSign,
+  Wallet,
   TrendingUp,
   TrendingDown,
-  Briefcase,
-  UserCheck,
+  Building,
+  ShieldCheck,
   Settings2,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Checkbox } from '@/components/ui/checkbox'
 
-const revenueData = [
-  { month: 'Jan', revenue: 45000, expense: 32000 },
-  { month: 'Fev', revenue: 48000, expense: 33000 },
-  { month: 'Mar', revenue: 52000, expense: 31000 },
-  { month: 'Abr', revenue: 51000, expense: 35000 },
-  { month: 'Mai', revenue: 58000, expense: 34000 },
-  { month: 'Jun', revenue: 62000, expense: 36000 },
+const allMetrics = [
+  { id: 'admin', label: 'Administradoras Parceiras', icon: Building, color: 'text-blue-500' },
+  { id: 'condo', label: 'Total de Condomínios', icon: Building2, color: 'text-indigo-500' },
+  { id: 'residents', label: 'Total de Moradores', icon: Users, color: 'text-green-500' },
+  { id: 'sindicos', label: 'Total de Síndicos', icon: ShieldCheck, color: 'text-orange-500' },
+  {
+    id: 'revenue',
+    label: 'Receita',
+    icon: TrendingUp,
+    color: 'text-emerald-500',
+    isCurrency: true,
+  },
+  { id: 'expense', label: 'Despesa', icon: TrendingDown, color: 'text-red-500', isCurrency: true },
+  { id: 'profit', label: 'Lucro', icon: Wallet, color: 'text-blue-600', isCurrency: true },
 ]
 
-export function AdminOverview() {
-  const [stats, setStats] = useState({
-    condominios: 0,
-    administradoras: 0,
-    moradores: 0,
-    sindicos: 0,
-    receita: 0,
-    despesa: 0,
-    lucro: 0,
-  })
+const mockData = {
+  Mês: {
+    admin: 12,
+    condo: 45,
+    residents: 1250,
+    sindicos: 30,
+    revenue: 150000,
+    expense: 90000,
+    profit: 60000,
+  },
+  Trimestre: {
+    admin: 14,
+    condo: 48,
+    residents: 1300,
+    sindicos: 32,
+    revenue: 450000,
+    expense: 270000,
+    profit: 180000,
+  },
+  Semestre: {
+    admin: 15,
+    condo: 50,
+    residents: 1400,
+    sindicos: 35,
+    revenue: 900000,
+    expense: 550000,
+    profit: 350000,
+  },
+  Ano: {
+    admin: 18,
+    condo: 60,
+    residents: 1800,
+    sindicos: 40,
+    revenue: 1800000,
+    expense: 1100000,
+    profit: 700000,
+  },
+  'All Time': {
+    admin: 25,
+    condo: 120,
+    residents: 3500,
+    sindicos: 85,
+    revenue: 5500000,
+    expense: 3200000,
+    profit: 2300000,
+  },
+}
 
-  const [recentCondos, setRecentCondos] = useState<any[]>([])
+export default function AdminOverview() {
+  const [period, setPeriod] = useState('Mês')
+  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(allMetrics.map((m) => m.id))
 
-  const defaultVisibleKpis = {
-    administradoras: true,
-    condominios: true,
-    sindicos: true,
-    moradores: true,
-    receita: true,
-    despesa: true,
-    lucro: true,
+  const currentData = mockData[period as keyof typeof mockData] || mockData['Mês']
+
+  const toggleMetric = (id: string) => {
+    setVisibleMetrics((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]))
   }
 
-  const [visibleKpis, setVisibleKpis] = useState(() => {
-    const saved = localStorage.getItem('acdomz-kpi-prefs')
-    return saved ? JSON.parse(saved) : defaultVisibleKpis
-  })
-
-  const handleKpiToggle = (key: keyof typeof visibleKpis) => {
-    const newPrefs = { ...visibleKpis, [key]: !visibleKpis[key] }
-    setVisibleKpis(newPrefs)
-    localStorage.setItem('acdomz-kpi-prefs', JSON.stringify(newPrefs))
-  }
-
-  useEffect(() => {
-    const loadData = async () => {
-      const [condos, admins, moradores, profiles, receitas, despesasPt, despesasRec, recent] =
-        await Promise.all([
-          supabase.from('condominios').select('*', { count: 'exact', head: true }),
-          supabase.from('administradoras').select('*', { count: 'exact', head: true }),
-          supabase.from('moradores').select('*', { count: 'exact', head: true }),
-          supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'sindico'),
-          supabase.from('receitas_acdomz').select('amount'),
-          supabase.from('despesas_pontuais_acdomz').select('amount'),
-          supabase.from('despesas_recorrentes_acdomz').select('amount'),
-          supabase
-            .from('condominios')
-            .select('id, name, total_units, sindia_active')
-            .order('created_at', { ascending: false })
-            .limit(5),
-        ])
-
-      const totalReceita =
-        receitas.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0
-      const totalDespesa =
-        (despesasPt.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0) +
-        (despesasRec.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0)
-
-      setStats({
-        condominios: condos.count || 0,
-        administradoras: admins.count || 0,
-        moradores: moradores.count || 0,
-        sindicos: profiles.count || 0,
-        receita: totalReceita,
-        despesa: totalDespesa,
-        lucro: totalReceita - totalDespesa,
-      })
-
-      if (recent.data) setRecentCondos(recent.data)
+  const formatValue = (value: number, isCurrency?: boolean) => {
+    if (isCurrency) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
     }
-    loadData()
-  }, [])
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+    return value.toLocaleString('pt-BR')
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-end">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings2 className="h-4 w-4" /> Personalizar Métricas
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Personalizar Dashboard</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecione quais métricas deseja exibir no painel principal.
-              </p>
-              <div className="grid gap-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-admin"
-                    checked={visibleKpis.administradoras}
-                    onCheckedChange={() => handleKpiToggle('administradoras')}
-                  />
-                  <label
-                    htmlFor="kpi-admin"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Administradoras Parceiras
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-condo"
-                    checked={visibleKpis.condominios}
-                    onCheckedChange={() => handleKpiToggle('condominios')}
-                  />
-                  <label
-                    htmlFor="kpi-condo"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Condomínios
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-sindicos"
-                    checked={visibleKpis.sindicos}
-                    onCheckedChange={() => handleKpiToggle('sindicos')}
-                  />
-                  <label
-                    htmlFor="kpi-sindicos"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Síndicos
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-moradores"
-                    checked={visibleKpis.moradores}
-                    onCheckedChange={() => handleKpiToggle('moradores')}
-                  />
-                  <label
-                    htmlFor="kpi-moradores"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Moradores
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-receita"
-                    checked={visibleKpis.receita}
-                    onCheckedChange={() => handleKpiToggle('receita')}
-                  />
-                  <label
-                    htmlFor="kpi-receita"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Receita Consolidada
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-despesa"
-                    checked={visibleKpis.despesa}
-                    onCheckedChange={() => handleKpiToggle('despesa')}
-                  />
-                  <label
-                    htmlFor="kpi-despesa"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Despesa Consolidada
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-lucro"
-                    checked={visibleKpis.lucro}
-                    onCheckedChange={() => handleKpiToggle('lucro')}
-                  />
-                  <label
-                    htmlFor="kpi-lucro"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Lucro Líquido
-                  </label>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-3xl font-bold tracking-tight">Visão Geral</h2>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Selecione o período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Mês">Mês Atual</SelectItem>
+              <SelectItem value="Trimestre">Trimestre</SelectItem>
+              <SelectItem value="Semestre">Semestre</SelectItem>
+              <SelectItem value="Ano">Ano</SelectItem>
+              <SelectItem value="All Time">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Settings2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Personalizar</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-4">
+                <h4 className="font-medium text-sm border-b pb-2">Métricas Visíveis</h4>
+                <div className="space-y-3">
+                  {allMetrics.map((metric) => (
+                    <div key={metric.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`metric-${metric.id}`}
+                        checked={visibleMetrics.includes(metric.id)}
+                        onCheckedChange={() => toggleMetric(metric.id)}
+                      />
+                      <label
+                        htmlFor={`metric-${metric.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {metric.label}
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {visibleKpis.administradoras && (
-          <KpiCard
-            title="Administradoras Parceiras"
-            value={stats.administradoras.toString()}
-            icon={Briefcase}
-            trend="+1"
-          />
-        )}
-        {visibleKpis.condominios && (
-          <KpiCard
-            title="Total Condomínios"
-            value={stats.condominios.toString()}
-            icon={Building}
-            trend="+2"
-          />
-        )}
-        {visibleKpis.sindicos && (
-          <KpiCard
-            title="Total Síndicos"
-            value={stats.sindicos.toString()}
-            icon={UserCheck}
-            trend="+3"
-          />
-        )}
-        {visibleKpis.moradores && (
-          <KpiCard
-            title="Total Moradores"
-            value={stats.moradores.toString()}
-            icon={Users}
-            trend="+12"
-          />
-        )}
-        {visibleKpis.receita && (
-          <KpiCard
-            title="Receita Consolidada"
-            value={formatCurrency(stats.receita)}
-            icon={DollarSign}
-            trend="+8%"
-          />
-        )}
-        {visibleKpis.despesa && (
-          <KpiCard
-            title="Despesa Consolidada"
-            value={formatCurrency(stats.despesa)}
-            icon={TrendingDown}
-            trend="-3%"
-          />
-        )}
-        {visibleKpis.lucro && (
-          <KpiCard
-            title="Lucro Líquido"
-            value={formatCurrency(stats.lucro)}
-            icon={TrendingUp}
-            trend="+12%"
-          />
-        )}
-      </div>
+      {visibleMetrics.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-lg bg-secondary/20">
+          <Settings2 className="h-10 w-10 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">
+            Nenhuma métrica selecionada. Clique em personalizar para exibir os indicadores.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {allMetrics
+            .filter((m) => visibleMetrics.includes(m.id))
+            .map((metric, index) => {
+              const Icon = metric.icon
+              const value = currentData[metric.id as keyof typeof currentData] || 0
 
-      <div className="grid gap-6 md:grid-cols-7">
-        <Card className="md:col-span-4 hover-lift">
-          <CardHeader>
-            <CardTitle>Evolução Financeira (Últimos 6 meses)</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ChartContainer
-              config={{
-                revenue: { label: 'Receitas', color: 'hsl(var(--chart-1))' },
-                expense: { label: 'Despesas', color: 'hsl(var(--chart-2))' },
-              }}
-              className="h-[300px]"
-            >
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                <YAxis
-                  tickFormatter={(val) => `R$${val / 1000}k`}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="var(--color-revenue)"
-                  strokeWidth={3}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="expense"
-                  stroke="var(--color-expense)"
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-3 hover-lift">
-          <CardHeader>
-            <CardTitle>Condomínios Recentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="text-right">Unidades</TableHead>
-                  <TableHead className="text-right">SINDIA</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentCondos.map((condo) => (
-                  <TableRow key={condo.id}>
-                    <TableCell className="font-medium">{condo.name}</TableCell>
-                    <TableCell className="text-right">{condo.total_units || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={condo.sindia_active ? 'default' : 'secondary'}>
-                        {condo.sindia_active ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {recentCondos.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="text-center py-4 text-muted-foreground text-sm"
-                    >
-                      Nenhum condomínio cadastrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+              return (
+                <Card
+                  key={metric.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {metric.label}
+                    </CardTitle>
+                    <div className={`p-2 rounded-md bg-secondary/50 ${metric.color}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {formatValue(value as number, metric.isCurrency)}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+        </div>
+      )}
     </div>
-  )
-}
-
-function KpiCard({
-  title,
-  value,
-  icon: Icon,
-  trend,
-}: {
-  title: string
-  value: string
-  icon: any
-  trend: string
-}) {
-  const isPositive = trend.startsWith('+')
-  return (
-    <Card className="hover-lift">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-secondary" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-primary">{value}</div>
-        <p className={`text-xs mt-1 font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {trend} no período
-        </p>
-      </CardContent>
-    </Card>
   )
 }

@@ -1,130 +1,116 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { ArrowUp, ArrowDown, GripVertical } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { Moon, Sun, Bell, Globe } from 'lucide-react'
+
+const defaultOrder = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'administradoras', label: 'Administradoras' },
+  { id: 'condominios', label: 'Condomínios' },
+  { id: 'sindicos', label: 'Síndicos' },
+  { id: 'moradores', label: 'Moradores' },
+  { id: 'documentos', label: 'Documentos' },
+  { id: 'financeiro', label: 'Fin. Condomínio' },
+  { id: 'calculadora', label: 'Calc. Honorários' },
+]
 
 export function PreferenciasTab() {
   const { toast } = useToast()
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
-  const [pushEnabled, setPushEnabled] = useState(true)
-  const [language, setLanguage] = useState('pt-BR')
+  const [navItems, setNavItems] = useState(defaultOrder)
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('acdomz-theme') as any
-    if (savedTheme) setTheme(savedTheme)
-
-    const savedPush = localStorage.getItem('acdomz-push')
-    if (savedPush !== null) setPushEnabled(savedPush === 'true')
-
-    const savedLang = localStorage.getItem('acdomz-lang')
-    if (savedLang) setLanguage(savedLang)
+    const savedOrder = localStorage.getItem('acdomz_nav_order')
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder)
+        // Garante que todas as opções padrão existam mesmo se o cache estiver desatualizado
+        const merged = parsed.filter((p: any) => defaultOrder.find((d) => d.id === p.id))
+        const missing = defaultOrder.filter((d) => !merged.find((m: any) => m.id === d.id))
+        setNavItems([...merged, ...missing])
+      } catch (e) {
+        console.error('Error parsing nav order', e)
+      }
+    }
   }, [])
 
-  const handleThemeChange = (val: 'light' | 'dark' | 'system') => {
-    setTheme(val)
-    localStorage.setItem('acdomz-theme', val)
-    const root = window.document.documentElement
-    root.classList.remove('light', 'dark')
-    if (val === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-      root.classList.add(systemTheme)
-    } else {
-      root.classList.add(val)
-    }
-    toast({ title: 'Preferências', description: 'Tema atualizado com sucesso.' })
+  const moveUp = (index: number) => {
+    if (index === 0) return
+    const newItems = [...navItems]
+    const temp = newItems[index - 1]
+    newItems[index - 1] = newItems[index]
+    newItems[index] = temp
+    setNavItems(newItems)
   }
 
-  const handlePushChange = (val: boolean) => {
-    setPushEnabled(val)
-    localStorage.setItem('acdomz-push', String(val))
+  const moveDown = (index: number) => {
+    if (index === navItems.length - 1) return
+    const newItems = [...navItems]
+    const temp = newItems[index + 1]
+    newItems[index + 1] = newItems[index]
+    newItems[index] = temp
+    setNavItems(newItems)
+  }
+
+  const saveOrder = () => {
+    localStorage.setItem('acdomz_nav_order', JSON.stringify(navItems))
     toast({
-      title: 'Preferências',
-      description: val ? 'Notificações ativadas.' : 'Notificações desativadas.',
+      title: 'Preferências salvas',
+      description: 'A ordem do menu lateral foi atualizada.',
     })
-  }
-
-  const handleLangChange = (val: string) => {
-    setLanguage(val)
-    localStorage.setItem('acdomz-lang', val)
-    toast({ title: 'Preferências', description: 'Idioma atualizado com sucesso.' })
+    // Dispara evento para o sidebar atualizar imediatamente
+    window.dispatchEvent(new Event('nav_order_changed'))
   }
 
   return (
-    <Card className="border-t-4 border-t-[#1a3a52]">
-      <CardHeader>
-        <CardTitle>Preferências do Sistema</CardTitle>
-        <CardDescription>Personalize sua experiência na plataforma ACDOMZ.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-[#1a3a52]/10 rounded-full text-[#1a3a52] dark:text-[#d4af8f] dark:bg-[#d4af8f]/10">
-              {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-            </div>
-            <div>
-              <Label className="text-base font-semibold">Aparência (Dark Mode)</Label>
-              <p className="text-sm text-muted-foreground">Escolha o tema visual da plataforma.</p>
-            </div>
+    <div className="space-y-6 animate-fade-in-up">
+      <Card>
+        <CardHeader>
+          <CardTitle>Personalização do Menu Lateral</CardTitle>
+          <CardDescription>
+            Reordene os itens do menu lateral para priorizar as seções que você mais utiliza no dia
+            a dia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 mb-6 max-w-xl">
+            {navItems.map((item, index) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border transition-colors hover:bg-secondary/50"
+              >
+                <div className="flex items-center gap-3">
+                  <GripVertical className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">{item.label}</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => moveUp(index)}
+                    disabled={index === 0}
+                    className="h-8 w-8"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => moveDown(index)}
+                    disabled={index === navItems.length - 1}
+                    className="h-8 w-8"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-          <Select value={theme} onValueChange={handleThemeChange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="light">Claro</SelectItem>
-              <SelectItem value="dark">Escuro</SelectItem>
-              <SelectItem value="system">Sistema</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-[#1a3a52]/10 rounded-full text-[#1a3a52] dark:text-[#d4af8f] dark:bg-[#d4af8f]/10">
-              <Bell className="h-5 w-5" />
-            </div>
-            <div>
-              <Label className="text-base font-semibold">Notificações Push</Label>
-              <p className="text-sm text-muted-foreground">
-                Receba alertas importantes do sistema.
-              </p>
-            </div>
-          </div>
-          <Switch checked={pushEnabled} onCheckedChange={handlePushChange} />
-        </div>
-
-        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-[#1a3a52]/10 rounded-full text-[#1a3a52] dark:text-[#d4af8f] dark:bg-[#d4af8f]/10">
-              <Globe className="h-5 w-5" />
-            </div>
-            <div>
-              <Label className="text-base font-semibold">Idioma</Label>
-              <p className="text-sm text-muted-foreground">Selecione o idioma da interface.</p>
-            </div>
-          </div>
-          <Select value={language} onValueChange={handleLangChange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pt-BR">Português (BR)</SelectItem>
-              <SelectItem value="en-US">English (US)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
+          <Button onClick={saveOrder} className="w-full sm:w-auto">
+            Salvar Ordem do Menu
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

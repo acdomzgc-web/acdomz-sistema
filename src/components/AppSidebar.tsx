@@ -1,136 +1,186 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import {
-  Building,
+  Building2,
   Users,
   FileText,
   LayoutDashboard,
-  Building2,
-  PieChart,
-  Wallet,
-  Megaphone,
-  Bot,
   Calculator,
-  BarChart2,
   Settings,
-  GripVertical,
+  LogOut,
+  Building,
+  ShieldCheck,
+  Wallet,
 } from 'lucide-react'
+
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from '@/components/ui/sidebar'
 import { Logo } from '@/components/Logo'
+import { useAuth } from '@/hooks/use-auth'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { supabase } from '@/lib/supabase/client'
 
-const defaultNavItems = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Administradoras', url: '/administradoras', icon: Building2 },
-  { title: 'Condomínios', url: '/condominios', icon: Building },
-  { title: 'Moradores', url: '/moradores', icon: Users },
-  { title: 'Documentos', url: '/documentos', icon: FileText },
-  { title: 'Dash. Financeiro ACDOMZ', url: '/dashboard-financeiro', icon: PieChart },
-  { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
-  { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
-  { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
-  { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
-  { title: 'Síndicos', url: '/sindicos', icon: Users },
-  { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
-  { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
-  { title: 'Configurações', url: '/configuracoes', icon: Settings },
+const menuItemsConfig = {
+  dashboard: { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  administradoras: { title: 'Administradoras', url: '/administradoras', icon: Building },
+  condominios: { title: 'Condomínios', url: '/condominios', icon: Building2 },
+  sindicos: { title: 'Síndicos', url: '/sindicos', icon: ShieldCheck },
+  moradores: { title: 'Moradores', url: '/moradores', icon: Users },
+  documentos: { title: 'Documentos', url: '/documentos', icon: FileText },
+  financeiro: { title: 'Fin. Condomínio', url: '/financeiro', icon: Wallet },
+  calculadora: { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
+}
+
+const defaultOrder = [
+  'dashboard',
+  'administradoras',
+  'condominios',
+  'sindicos',
+  'moradores',
+  'documentos',
+  'financeiro',
+  'calculadora',
 ]
 
 export function AppSidebar() {
   const location = useLocation()
-  const [navItems, setNavItems] = useState(defaultNavItems)
+  const { user, signOut } = useAuth()
+  const [profile, setProfile] = useState<any>(null)
+  const [navOrder, setNavOrder] = useState<string[]>(defaultOrder)
 
   useEffect(() => {
-    const saved = localStorage.getItem('sidebar-order-v2')
-    if (saved) {
-      try {
-        const order = JSON.parse(saved)
-        const orderedItems = order
-          .map((title: string) => defaultNavItems.find((i) => i.title === title))
-          .filter(Boolean)
-        const missing = defaultNavItems.filter((i) => !order.includes(i.title))
-        setNavItems([...orderedItems, ...missing])
-      } catch (e) {
-        console.error('Failed to parse sidebar order', e)
+    const loadNavOrder = () => {
+      const saved = localStorage.getItem('acdomz_nav_order')
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          setNavOrder(parsed.map((item: any) => item.id))
+        } catch (e) {
+          console.error('Error parsing nav order', e)
+        }
       }
     }
+
+    loadNavOrder()
+
+    window.addEventListener('nav_order_changed', loadNavOrder)
+    return () => window.removeEventListener('nav_order_changed', loadNavOrder)
   }, [])
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    e.dataTransfer.setData('text/plain', index.toString())
+  useEffect(() => {
+    if (user) {
+      const fetchProfile = async () => {
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+
+        if (data) {
+          setProfile(data)
+        }
+      }
+      fetchProfile()
+    }
+  }, [user])
+
+  const handleSignOut = async () => {
+    await signOut()
   }
 
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
-    e.preventDefault()
-    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'))
-    if (sourceIndex === targetIndex || isNaN(sourceIndex)) return
-
-    const newItems = [...navItems]
-    const [removed] = newItems.splice(sourceIndex, 1)
-    newItems.splice(targetIndex, 0, removed)
-
-    setNavItems(newItems)
-    localStorage.setItem('sidebar-order-v2', JSON.stringify(newItems.map((i) => i.title)))
+  const getInitials = (name: string) => {
+    if (!name) return 'U'
+    return name.substring(0, 2).toUpperCase()
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
+  const userName = profile?.name || user?.email?.split('@')[0] || 'Usuário'
+  const userRole = profile?.is_admin ? 'Administrador' : 'Síndico'
+  const avatarSrc =
+    profile?.avatar_url ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userName)}&backgroundColor=0f172a&textColor=ffffff`
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <Logo iconClassName="h-8 w-8" textClassName="text-2xl" />
+      <SidebarHeader className="p-4 flex flex-row items-center border-b">
+        <Logo />
       </SidebarHeader>
-      <SidebarContent className="px-2">
-        <SidebarMenu>
-          {navItems.map((item, index) => (
-            <SidebarMenuItem
-              key={item.title}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragOver={handleDragOver}
-              className="group/item relative"
-            >
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full opacity-0 group-hover/item:opacity-100 cursor-grab px-1 z-10 hover:text-primary">
-                <GripVertical className="h-4 w-4" />
-              </div>
-              <SidebarMenuButton
-                asChild
-                isActive={location.pathname === item.url}
-                tooltip={item.title}
-                className="transition-all duration-200"
-              >
-                <Link to={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navOrder.map((id) => {
+                const item = menuItemsConfig[id as keyof typeof menuItemsConfig]
+                if (!item) return null
+                const isActive =
+                  location.pathname === item.url ||
+                  (item.url !== '/' && location.pathname.startsWith(item.url))
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                      <Link to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith('/configuracoes')}
+                  tooltip="Configurações"
+                >
+                  <Link to="/configuracoes">
+                    <Settings className="h-4 w-4" />
+                    <span>Configurações</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 px-2 py-1.5 rounded-md bg-muted/50 border border-border/50">
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs">
-            AD
+
+      <SidebarFooter className="border-t p-4">
+        <div className="flex items-center justify-between w-full gap-2">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <Avatar className="h-9 w-9 shrink-0 border border-primary/20 shadow-sm">
+              <AvatarImage src={avatarSrc} alt={userName} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-medium">
+                {getInitials(userName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-semibold truncate leading-none mb-1">{userName}</span>
+              <span className="text-xs text-muted-foreground truncate leading-none">
+                {userRole}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col text-sm">
-            <span className="font-semibold text-foreground leading-none">Admin</span>
-            <span className="text-xs text-muted-foreground mt-1">Plataforma</span>
-          </div>
+          <button
+            onClick={handleSignOut}
+            className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-destructive/10 shrink-0"
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }
