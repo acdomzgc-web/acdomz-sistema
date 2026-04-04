@@ -102,17 +102,28 @@ export default function Condominios() {
   const handleDelete = async (id: string) => {
     if (
       !confirm(
-        'Deseja realmente excluir este condomínio? Todos os dados vinculados podem ser perdidos.',
+        'Deseja realmente excluir este condomínio? Todos os dados vinculados serão perdidos.',
       )
     )
       return
 
-    const { error } = await supabase.from('condominios').delete().eq('id', id)
-    if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
-    } else {
+    try {
+      await supabase.from('calculos_honorarios').delete().eq('condominio_id', id)
+      await supabase.from('comunicados').delete().eq('condominio_id', id)
+      await supabase.from('conversas_sindia').delete().eq('condominio_id', id)
+      await supabase.from('documentos_condominio').delete().eq('condominio_id', id)
+      await supabase.from('financeiro_condominio').delete().eq('condominio_id', id)
+      await supabase.from('moradores').delete().eq('condominio_id', id)
+      await supabase.from('parecer_financeiro').delete().eq('condominio_id', id)
+      await supabase.from('receitas_acdomz').delete().eq('condominio_id', id)
+
+      const { error } = await supabase.from('condominios').delete().eq('id', id)
+      if (error) throw error
+
       toast({ title: 'Condomínio excluído com sucesso!' })
       loadData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao excluir', description: err.message, variant: 'destructive' })
     }
   }
 

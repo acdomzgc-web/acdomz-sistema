@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { FileText, AlertCircle, TrendingUp, Users } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import {
   Select,
   SelectContent,
@@ -31,6 +33,22 @@ const defaulters = [
 ]
 
 export function SpecificOverview() {
+  const [condominios, setCondominios] = useState<any[]>([])
+  const [selectedCondo, setSelectedCondo] = useState<string>('')
+
+  useEffect(() => {
+    supabase
+      .from('condominios')
+      .select('id, name')
+      .order('name')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setCondominios(data)
+          setSelectedCondo(data[0].id)
+        }
+      })
+  }, [])
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-lg border shadow-sm">
@@ -40,14 +58,21 @@ export function SpecificOverview() {
           </div>
           <div>
             <h2 className="text-sm font-medium text-muted-foreground">Condomínio Selecionado</h2>
-            <Select defaultValue="alpha">
+            <Select value={selectedCondo} onValueChange={setSelectedCondo}>
               <SelectTrigger className="w-[280px] h-8 border-0 bg-transparent p-0 text-lg font-bold text-primary focus:ring-0 focus:ring-offset-0">
-                <SelectValue />
+                <SelectValue placeholder="Selecione um condomínio" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="alpha">Residencial Alpha</SelectItem>
-                <SelectItem value="beta">Condomínio Beta Premium</SelectItem>
-                <SelectItem value="sol">Torres do Sol</SelectItem>
+                {condominios.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+                {condominios.length === 0 && (
+                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                    Nenhum condomínio encontrado.
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
