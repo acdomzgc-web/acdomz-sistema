@@ -17,7 +17,6 @@ import { useToast } from '@/hooks/use-toast'
 import {
   BASE_VALUE,
   VALOR_AREA_COMUM,
-  TIPOS,
   DENSIDADES,
   calcularLotes,
   formatCurrency,
@@ -29,9 +28,8 @@ export default function CalculadoraHonorarios() {
   const { toast } = useToast()
   const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondominioId, setSelectedCondominioId] = useState<string>('none')
-  const [tipoId, setTipoId] = useState<string>('horizontal')
   const [lotes, setLotes] = useState<number>(50)
-  const [densidadeId, setDensidadeId] = useState<string>('media')
+  const [densidadeId, setDensidadeId] = useState<string>('medium')
   const [areasComuns, setAreasComuns] = useState<number>(2)
   const [isSaving, setIsSaving] = useState(false)
   const [isAuto, setIsAuto] = useState<boolean>(true)
@@ -50,38 +48,36 @@ export default function CalculadoraHonorarios() {
     if (isAuto && selectedCondominioId !== 'none') {
       const condo = condominios.find((c) => c.id === selectedCondominioId)
       if (condo) {
-        setTipoId(condo.calc_tipo_id || 'horizontal')
         setLotes(condo.total_units || 0)
-        setDensidadeId(condo.calc_densidade_id || 'media')
+        setDensidadeId(condo.calc_densidade_id || 'medium')
         setAreasComuns(condo.calc_areas_comuns || 0)
       }
     }
   }, [isAuto, selectedCondominioId, condominios])
 
   const calc = useMemo(() => {
-    const tipo = TIPOS.find((x) => x.id === tipoId) || TIPOS[0]
-    const densidade = DENSIDADES.find((x) => x.id === densidadeId) || DENSIDADES[0]
+    const densidade = DENSIDADES.find((x) => x.id === densidadeId) || DENSIDADES[1]
 
     const variavelLotes = calcularLotes(lotes || 0)
     const valorAreasComuns = (areasComuns || 0) * VALOR_AREA_COMUM
     const subtotal = BASE_VALUE + variavelLotes + valorAreasComuns
     const honorarioTecnico = subtotal * densidade.multiplier
 
-    const limitadoTeto = Math.min(honorarioTecnico, tipo.teto)
+    const teto_total = (lotes || 0) * densidade.teto_por_lote
+    const limitadoTeto = teto_total > 0 ? Math.min(honorarioTecnico, teto_total) : honorarioTecnico
     const honorarioFinal = Math.max(BASE_VALUE, limitadoTeto)
 
     return {
-      tipo,
       densidade,
       variavelLotes,
       valorAreasComuns,
       subtotal,
       honorarioTecnico,
-      teto: tipo.teto,
+      teto_total,
       limitadoTeto,
       honorarioFinal,
     }
-  }, [tipoId, lotes, densidadeId, areasComuns])
+  }, [lotes, densidadeId, areasComuns])
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -90,7 +86,6 @@ export default function CalculadoraHonorarios() {
       condominio_id: cid,
       calculated_value: calc.honorarioFinal,
       details: {
-        tipoId,
         lotes,
         densidadeId,
         areasComuns,
@@ -157,30 +152,6 @@ export default function CalculadoraHonorarios() {
                 </div>
               </div>
               <Separator />
-              <div className="space-y-2">
-                <Label>Tipo de Condomínio</Label>
-                <Select
-                  value={tipoId}
-                  onValueChange={setTipoId}
-                  disabled={isAuto && selectedCondominioId !== 'none'}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIPOS.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <Info className="h-3 w-3 mr-1" /> Define o teto máximo (trilha) aplicável aos
-                  honorários.
-                </p>
-              </div>
-              <Separator />
               <div className="grid sm:grid-cols-2 gap-6 items-start">
                 <div className="space-y-2">
                   <Label>Número de Lotes / Unidades</Label>
@@ -192,7 +163,8 @@ export default function CalculadoraHonorarios() {
                     onChange={(e) => setLotes(Number(e.target.value))}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Variável baseada na quantidade. O valor é aplicado em cascata conforme a faixa.
+                    Variável baseada na quantidade. O valor é aplicado em cascata conforme a faixa
+                    refinada.
                   </p>
                 </div>
                 <FaixasLotesTable />
@@ -200,7 +172,7 @@ export default function CalculadoraHonorarios() {
               <Separator />
               <div className="grid sm:grid-cols-2 gap-6 items-start">
                 <div className="space-y-2">
-                  <Label>Categoria de Densidade</Label>
+                  <Label>Trilha de Densidade</Label>
                   <Select
                     value={densidadeId}
                     onValueChange={setDensidadeId}
@@ -218,15 +190,15 @@ export default function CalculadoraHonorarios() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Multiplicador aplicado sobre o subtotal (Base + Lotes + Áreas), refletindo o uso
-                    da infraestrutura.
+                    Multiplicador aplicado sobre o subtotal (Base + Lotes + Áreas) e define o teto
+                    máximo comercial por lote.
                   </p>
                 </div>
                 <DensidadeTable />
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label>Áreas Comuns (Qtd.)</Label>
+                <Label>Áreas Comuns (Qtd. Espaços)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -235,8 +207,8 @@ export default function CalculadoraHonorarios() {
                   onChange={(e) => setAreasComuns(Number(e.target.value))}
                 />
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <Info className="h-3 w-3 mr-1" /> Cada área (piscina, salão, etc) adiciona{' '}
-                  {formatCurrency(VALOR_AREA_COMUM)} à base.
+                  <Info className="h-3 w-3 mr-1" /> Cada espaço operacional (piscina, salão, quadra)
+                  adiciona {formatCurrency(VALOR_AREA_COMUM)} (10% do SMN) à base.
                 </p>
               </div>
             </CardContent>
@@ -252,13 +224,14 @@ export default function CalculadoraHonorarios() {
               <div className="space-y-3 text-sm">
                 <p className="font-semibold text-muted-foreground">1. Honorário Técnico</p>
                 <div className="font-mono bg-muted/50 p-3 rounded-md text-xs space-y-1">
-                  <p>= [2 SMN + Var. Lotes + (Áreas × 162,10)] × Dens.</p>
+                  <p>= [2 SMN + Var. Lotes + (Áreas × 10% SMN)] × Densidade</p>
                   <p>
                     = [{formatCurrency(BASE_VALUE)} + {formatCurrency(calc.variavelLotes)} +{' '}
-                    {formatCurrency(calc.valorAreasComuns)}] × {calc.densidade.multiplier}
+                    {formatCurrency(calc.valorAreasComuns)}] ×{' '}
+                    {calc.densidade.multiplier.toFixed(2)}x
                   </p>
                   <p>
-                    = [{formatCurrency(calc.subtotal)}] × {calc.densidade.multiplier}
+                    = [{formatCurrency(calc.subtotal)}] × {calc.densidade.multiplier.toFixed(2)}x
                   </p>
                   <p className="pt-1 mt-1 border-t border-border/50 text-foreground font-bold">
                     = {formatCurrency(calc.honorarioTecnico)}
@@ -267,10 +240,18 @@ export default function CalculadoraHonorarios() {
               </div>
               <Separator />
               <div className="space-y-3 text-sm">
-                <p className="font-semibold text-muted-foreground">2. Limites (Teto por Trilha)</p>
+                <p className="font-semibold text-muted-foreground">
+                  2. Limites Estratégicos (Teto)
+                </p>
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Teto ({calc.tipo.name}):</span>
-                  <span className="font-mono text-destructive">{formatCurrency(calc.teto)}</span>
+                  <span>Teto por Lote ({calc.densidade.name}):</span>
+                  <span className="font-mono">{formatCurrency(calc.densidade.teto_por_lote)}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Teto Total ({lotes} lotes):</span>
+                  <span className="font-mono text-destructive">
+                    {formatCurrency(calc.teto_total)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>Valor Limitado ao Teto:</span>
@@ -281,7 +262,7 @@ export default function CalculadoraHonorarios() {
               <div className="space-y-3 text-sm">
                 <p className="font-semibold text-primary">3. Honorário Final</p>
                 <p className="text-xs text-muted-foreground">
-                  max(2 SMN, Técnico limitado ao teto)
+                  max(Valor Fixo Base, Técnico limitado ao teto)
                 </p>
                 <div className="p-4 bg-primary text-primary-foreground rounded-lg flex items-center justify-between shadow-sm">
                   <span className="font-medium">Total Mensal</span>

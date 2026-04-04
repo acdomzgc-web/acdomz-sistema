@@ -74,8 +74,7 @@ export default function Condominios() {
       total_units: parseInt(formData.get('units') as string) || 0,
       admin_id: (formData.get('admin_id') as string) || null,
       sindico_id: (formData.get('sindico_id') as string) || null,
-      calc_tipo_id: (formData.get('calc_tipo_id') as string) || 'horizontal',
-      calc_densidade_id: (formData.get('calc_densidade_id') as string) || 'media',
+      calc_densidade_id: (formData.get('calc_densidade_id') as string) || 'medium',
       calc_areas_comuns: parseInt(formData.get('calc_areas_comuns') as string) || 0,
     }
 
@@ -220,41 +219,26 @@ export default function Condominios() {
                   <h3 className="text-sm font-semibold text-primary border-b pb-1 mt-4">
                     Parâmetros - Calculadora de Honorários
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label>Tipo</Label>
-                      <Select
-                        name="calc_tipo_id"
-                        defaultValue={editingCondo?.calc_tipo_id || 'horizontal'}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="horizontal">Horizontal</SelectItem>
-                          <SelectItem value="vertical">Vertical</SelectItem>
-                          <SelectItem value="comercial">Comercial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Densidade</Label>
+                      <Label>Densidade (Metragem Média)</Label>
                       <Select
                         name="calc_densidade_id"
-                        defaultValue={editingCondo?.calc_densidade_id || 'media'}
+                        defaultValue={editingCondo?.calc_densidade_id || 'medium'}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="baixa">Baixa</SelectItem>
-                          <SelectItem value="media">Média</SelectItem>
-                          <SelectItem value="alta">Alta</SelectItem>
+                          <SelectItem value="starter">STARTER (até 250m²)</SelectItem>
+                          <SelectItem value="medium">MEDIUM (251m² a 500m²)</SelectItem>
+                          <SelectItem value="premium">PREMIUM (501m² a 1000m²)</SelectItem>
+                          <SelectItem value="exclusive">EXCLUSIVE (acima de 1000m²)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Áreas Comuns</Label>
+                      <Label>Áreas Comuns (Qtd. Espaços)</Label>
                       <Input
                         name="calc_areas_comuns"
                         type="number"
