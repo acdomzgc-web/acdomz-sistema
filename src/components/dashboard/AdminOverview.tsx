@@ -9,6 +9,11 @@ import {
   UserCheck,
   Settings2,
   Activity,
+  Star,
+  Target,
+  Plus,
+  Trash2,
+  Edit2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -60,6 +65,17 @@ const revenueData = [
 ]
 
 export function AdminOverview() {
+  const [customKpis, setCustomKpis] = useState<any[]>(() => {
+    const saved = localStorage.getItem('acdomz-custom-kpis')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [dialogMode, setDialogMode] = useState<'list' | 'form'>('list')
+  const [editingKpi, setEditingKpi] = useState<any>(null)
+
+  useEffect(() => {
+    localStorage.setItem('acdomz-custom-kpis', JSON.stringify(customKpis))
+  }, [customKpis])
+
   const [stats, setStats] = useState({
     condominios: 0,
     administradoras: 0,
@@ -222,6 +238,8 @@ export function AdminOverview() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
+  const ICON_MAP: Record<string, any> = { Activity, DollarSign, Star, Target, Users, Building }
+
   const kpis = [
     {
       id: 'administradoras',
@@ -328,31 +346,167 @@ export function AdminOverview() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Personalizar Dashboard</DialogTitle>
+              <DialogTitle>
+                {dialogMode === 'list'
+                  ? 'Personalizar Dashboard'
+                  : editingKpi
+                    ? 'Editar Métrica'
+                    : 'Nova Métrica'}
+              </DialogTitle>
             </DialogHeader>
-            <div className="py-4 grid gap-3">
-              <p className="text-sm text-muted-foreground mb-2">
-                Selecione as métricas que deseja exibir.
-              </p>
-              {kpis.map((kpi) => (
-                <div
-                  key={kpi.id}
-                  className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  <Checkbox
-                    id={`kpi-${kpi.id}`}
-                    checked={visibleKpis[kpi.id as keyof typeof visibleKpis]}
-                    onCheckedChange={() => handleKpiToggle(kpi.id)}
-                  />
-                  <label
-                    htmlFor={`kpi-${kpi.id}`}
-                    className="text-sm font-medium leading-none cursor-pointer flex-1"
+            {dialogMode === 'list' ? (
+              <div className="py-4 grid gap-3 max-h-[60vh] overflow-y-auto pr-2">
+                <p className="text-sm text-muted-foreground mb-2">Métricas Padrão</p>
+                {kpis.map((kpi) => (
+                  <div
+                    key={kpi.id}
+                    className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
                   >
-                    {kpi.title}
-                  </label>
+                    <Checkbox
+                      id={`kpi-${kpi.id}`}
+                      checked={visibleKpis[kpi.id as keyof typeof visibleKpis]}
+                      onCheckedChange={() => handleKpiToggle(kpi.id)}
+                    />
+                    <label
+                      htmlFor={`kpi-${kpi.id}`}
+                      className="text-sm font-medium leading-none cursor-pointer flex-1"
+                    >
+                      {kpi.title}
+                    </label>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between mt-4 mb-2">
+                  <p className="text-sm text-muted-foreground">Métricas Personalizadas</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingKpi(null)
+                      setDialogMode('form')
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Adicionar
+                  </Button>
                 </div>
-              ))}
-            </div>
+                {customKpis.map((kpi) => (
+                  <div
+                    key={kpi.id}
+                    className="flex items-center space-x-3 p-2 rounded-md border bg-muted/30"
+                  >
+                    <span className="text-sm font-medium flex-1">{kpi.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        setEditingKpi(kpi)
+                        setDialogMode('form')
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        setCustomKpis(customKpis.filter((k) => k.id !== kpi.id))
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {customKpis.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic text-center py-2">
+                    Nenhuma métrica personalizada.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const fd = new FormData(e.currentTarget)
+                  const newKpi = {
+                    id: editingKpi?.id || Math.random().toString(36).substr(2, 9),
+                    title: fd.get('title') as string,
+                    value: fd.get('value') as string,
+                    trend: fd.get('trend') as string,
+                    color: fd.get('color') as 'green' | 'red',
+                    iconName: fd.get('iconName') as string,
+                  }
+                  if (editingKpi)
+                    setCustomKpis(customKpis.map((k) => (k.id === editingKpi.id ? newKpi : k)))
+                  else setCustomKpis([...customKpis, newKpi])
+                  setDialogMode('list')
+                }}
+                className="space-y-4 py-4"
+              >
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Título</label>
+                  <input
+                    required
+                    name="title"
+                    defaultValue={editingKpi?.title}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Valor (Ex: R$ 5.000 ou 150)</label>
+                  <input
+                    required
+                    name="value"
+                    defaultValue={editingKpi?.value}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Variação (Ex: +5%)</label>
+                    <input
+                      required
+                      name="trend"
+                      defaultValue={editingKpi?.trend}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Cor da Variação</label>
+                    <select
+                      name="color"
+                      defaultValue={editingKpi?.color || 'green'}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="green">Positiva (Verde)</option>
+                      <option value="red">Negativa (Vermelho)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ícone</label>
+                  <select
+                    name="iconName"
+                    defaultValue={editingKpi?.iconName || 'Activity'}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="Activity">Atividade</option>
+                    <option value="DollarSign">Dinheiro</option>
+                    <option value="Star">Estrela</option>
+                    <option value="Target">Alvo</option>
+                    <option value="Users">Usuários</option>
+                    <option value="Building">Prédio</option>
+                  </select>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setDialogMode('list')}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Salvar</Button>
+                </div>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -371,6 +525,16 @@ export function AdminOverview() {
               />
             ),
         )}
+        {customKpis.map((kpi) => (
+          <KpiCard
+            key={kpi.id}
+            title={kpi.title}
+            value={kpi.value}
+            icon={ICON_MAP[kpi.iconName] || Activity}
+            trend={kpi.trend}
+            trendColor={kpi.color as 'green' | 'red'}
+          />
+        ))}
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">

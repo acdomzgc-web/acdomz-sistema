@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react'
-import { FileText, AlertCircle, TrendingUp, Users } from 'lucide-react'
+import { FileText, Building, Users, TrendingUp, TrendingDown, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  Line,
+  LineChart,
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import {
   Select,
   SelectContent,
@@ -11,30 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-
-const cashFlowData = [
-  { month: 'Sem 1', in: 12000, out: 8000 },
-  { month: 'Sem 2', in: 15000, out: 9500 },
-  { month: 'Sem 3', in: 18000, out: 7000 },
-  { month: 'Sem 4', in: 14000, out: 11000 },
-]
-
-const defaulters = [
-  {
-    id: 1,
-    unit: 'Apto 101',
-    name: 'Carlos Silva',
-    amount: 'R$ 850,00',
-    status: 'Atrasado 15 dias',
-  },
-  { id: 2, unit: 'Apto 405', name: 'Mariana Costa', amount: 'R$ 1.700,00', status: 'Acordo Feito' },
-  { id: 3, unit: 'Apto 802', name: 'João Santos', amount: 'R$ 425,00', status: 'Notificado' },
-]
 
 export function SpecificOverview() {
   const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState<string>('')
+  const [period, setPeriod] = useState<string>('all')
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar')
+
+  const [summary, setSummary] = useState({
+    docsCount: 0,
+    adminName: '-',
+    sindicoName: '-',
+    receita: 0,
+    despesa: 0,
+  })
+  const [chartData, setChartData] = useState<any[]>([])
 
   useEffect(() => {
     supabase
@@ -49,17 +50,138 @@ export function SpecificOverview() {
       })
   }, [])
 
+  useEffect(() => {
+    if (!selectedCondo) return
+
+    const loadData = async () => {
+      const now = new Date()
+      const year = now.getFullYear()
+      let start: Date | null = null
+      let end: Date | null = null
+
+      if (period === 'year') {
+        start = new Date(year, 0, 1)
+        end = new Date(year, 11, 31)
+      } else if (period === 'semester') {
+        const isFirst = now.getMonth() < 6
+        start = new Date(year, isFirst ? 0 : 6, 1)
+        end = new Date(year, isFirst ? 5 : 11, isFirst ? 30 : 31)
+      } else if (period === 'quarter') {
+        const q = Math.floor(now.getMonth() / 3)
+        start = new Date(year, q * 3, 1)
+        end = new Date(year, q * 3 + 3, 0)
+      } else if (period === 'month') {
+        start = new Date(year, now.getMonth(), 1)
+        end = new Date(year, now.getMonth() + 1, 0)
+      }
+
+      const { data: condoData } = await supabase
+        .from('condominios')
+        .select(`
+          id,
+          administradoras ( name ),
+          sindico_id
+        `)
+        .eq('id', selectedCondo)
+        .single()
+
+      let sindicoName = 'Não atribuído'
+      if (condoData?.sindico_id) {
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', condoData.sindico_id)
+          .single()
+        if (p) sindicoName = p.name
+      }
+
+      const { count: docsCount } = await supabase
+        .from('documentos_condominio')
+        .select('*', { count: 'exact', head: true })
+        .eq('condominio_id', selectedCondo)
+
+      let finQuery = supabase
+        .from('financeiro_condominio')
+        .select('amount, type, date')
+        .eq('condominio_id', selectedCondo)
+
+      if (start && end) {
+        finQuery = finQuery
+          .gte('date', start.toISOString().split('T')[0])
+          .lte('date', end.toISOString().split('T')[0])
+      }
+
+      const { data: finData } = await finQuery
+
+      let receita = 0
+      let despesa = 0
+      const dataByMonth: Record<string, { in: number; out: number }> = {}
+
+      finData?.forEach((f) => {
+        const val = Number(f.amount) || 0
+        if (f.type === 'receita') receita += val
+        else despesa += val
+
+        if (f.date) {
+          const m = f.date.substring(0, 7)
+          if (!dataByMonth[m]) dataByMonth[m] = { in: 0, out: 0 }
+          if (f.type === 'receita') dataByMonth[m].in += val
+          else dataByMonth[m].out += val
+        }
+      })
+
+      setSummary({
+        docsCount: docsCount || 0,
+        adminName: condoData?.administradoras?.name || 'Não atribuída',
+        sindicoName,
+        receita,
+        despesa,
+      })
+
+      const monthNames = [
+        'Jan',
+        'Fev',
+        'Mar',
+        'Abr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Set',
+        'Out',
+        'Nov',
+        'Dez',
+      ]
+      const builtChartData = Object.keys(dataByMonth)
+        .sort()
+        .map((k) => ({
+          month: monthNames[parseInt(k.split('-')[1]) - 1],
+          in: dataByMonth[k].in,
+          out: dataByMonth[k].out,
+        }))
+
+      setChartData(
+        builtChartData.length > 0 ? builtChartData : [{ month: 'Sem dados', in: 0, out: 0 }],
+      )
+    }
+
+    loadData()
+  }, [selectedCondo, period])
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-lg border shadow-sm">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
-            <BuildingIcon className="h-5 w-5 text-primary" />
+            <Building className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h2 className="text-sm font-medium text-muted-foreground">Condomínio Selecionado</h2>
             <Select value={selectedCondo} onValueChange={setSelectedCondo}>
-              <SelectTrigger className="w-[280px] h-8 border-0 bg-transparent p-0 text-lg font-bold text-primary focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="w-[280px] h-8 border-0 bg-transparent p-0 text-lg font-bold text-primary focus:ring-0 focus:ring-offset-0 shadow-none">
                 <SelectValue placeholder="Selecione um condomínio" />
               </SelectTrigger>
               <SelectContent>
@@ -68,154 +190,202 @@ export function SpecificOverview() {
                     {c.name}
                   </SelectItem>
                 ))}
-                {condominios.length === 0 && (
-                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                    Nenhum condomínio encontrado.
-                  </div>
-                )}
               </SelectContent>
             </Select>
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className="text-sm px-3 py-1 bg-green-50 text-green-700 border-green-200"
-        >
-          Status: Saudável
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[160px] bg-background shadow-sm">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo o Período</SelectItem>
+              <SelectItem value="year">Anual</SelectItem>
+              <SelectItem value="semester">Semestral</SelectItem>
+              <SelectItem value="quarter">Trimestral</SelectItem>
+              <SelectItem value="month">Mensal</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover-lift border-l-4 border-l-primary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Moradores</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">245</div>
-            <p className="text-xs text-muted-foreground">98% de ocupação</p>
-          </CardContent>
-        </Card>
-        <Card className="hover-lift border-l-4 border-l-secondary">
+        <Card className="border-l-4 border-l-primary hover:shadow-md transition-all group cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Documentos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">128</div>
-            <p className="text-xs text-muted-foreground">5 atualizados este mês</p>
+            <div className="text-2xl font-bold">{summary.docsCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Arquivos registrados</p>
           </CardContent>
         </Card>
-        <Card className="hover-lift border-l-4 border-l-green-500">
+        <Card className="border-l-4 border-l-secondary hover:shadow-md transition-all group cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita MTD</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Liderança</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground group-hover:text-secondary transition-colors" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 59.000</div>
-            <p className="text-xs text-muted-foreground">+12% vs. meta</p>
+            <div className="text-sm font-bold truncate" title={summary.sindicoName}>
+              {summary.sindicoName}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 truncate" title={summary.adminName}>
+              {summary.adminName}
+            </p>
           </CardContent>
         </Card>
-        <Card className="hover-lift border-l-4 border-l-red-500">
+        <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-all group cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Receitas</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground group-hover:text-green-500 transition-colors" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.2%</div>
-            <p className="text-xs text-muted-foreground">R$ 2.975 pendentes</p>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(summary.receita)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">No período selecionado</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-all group cursor-default">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground group-hover:text-red-500 transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.despesa)}</div>
+            <p className="text-xs text-muted-foreground mt-1">No período selecionado</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="hover-lift">
-          <CardHeader>
-            <CardTitle>Fluxo de Caixa Mensal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                in: { label: 'Entradas', color: 'hsl(var(--chart-3))' },
-                out: { label: 'Saídas', color: 'hsl(var(--chart-5))' },
-              }}
-              className="h-[300px]"
-            >
-              <BarChart data={cashFlowData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} />
+      <Card className="border-border/40 shadow-sm hover:shadow-md transition-all bg-gradient-to-b from-card to-card/50">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-card/50">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" /> Análise Financeira
+          </CardTitle>
+          <Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
+            <SelectTrigger className="w-[160px] h-8 text-xs bg-background shadow-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bar">Barras (Comparativo)</SelectItem>
+              <SelectItem value="line">Linhas (Tendência)</SelectItem>
+              <SelectItem value="area">Área (Evolução)</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="pt-6 pl-2">
+          <ChartContainer
+            config={{
+              in: { label: 'Receitas', color: 'hsl(var(--chart-3))' },
+              out: { label: 'Despesas', color: 'hsl(var(--chart-5))' },
+            }}
+            className="h-[350px] w-full"
+          >
+            {chartType === 'bar' ? (
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dy={10}
+                />
                 <YAxis
                   tickFormatter={(val) => `R$${val / 1000}k`}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dx={-10}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="in" fill="var(--color-in)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="out" fill="var(--color-out)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="in" fill="var(--color-in)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                <Bar dataKey="out" fill="var(--color-out)" radius={[4, 4, 0, 0]} maxBarSize={50} />
               </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="hover-lift">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Lista de Inadimplentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {defaulters.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                >
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {d.unit} - {d.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{d.status}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-destructive">{d.amount}</p>
-                    <button className="text-xs text-primary hover:underline font-medium">
-                      Notificar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            ) : chartType === 'line' ? (
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis
+                  tickFormatter={(val) => `R$${val / 1000}k`}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dx={-10}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line
+                  type="monotone"
+                  dataKey="in"
+                  stroke="var(--color-in)"
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="out"
+                  stroke="var(--color-out)"
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            ) : (
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-in)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-in)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-out)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-out)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis
+                  tickFormatter={(val) => `R$${val / 1000}k`}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  dx={-10}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area
+                  type="monotone"
+                  dataKey="in"
+                  stroke="var(--color-in)"
+                  fill="url(#colorIn)"
+                  strokeWidth={3}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="out"
+                  stroke="var(--color-out)"
+                  fill="url(#colorOut)"
+                  strokeWidth={3}
+                />
+              </AreaChart>
+            )}
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
-  )
-}
-
-function BuildingIcon(props: any) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <rect width="16" height="20" x="4" y="2" rx="2" ry="2" />
-      <path d="M9 22v-4h6v4" />
-      <path d="M8 6h.01" />
-      <path d="M16 6h.01" />
-      <path d="M12 6h.01" />
-      <path d="M12 10h.01" />
-      <path d="M12 14h.01" />
-      <path d="M16 10h.01" />
-      <path d="M16 14h.01" />
-      <path d="M8 10h.01" />
-      <path d="M8 14h.01" />
-    </svg>
   )
 }

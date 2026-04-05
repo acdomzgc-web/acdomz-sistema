@@ -75,26 +75,34 @@ export function AppSidebar() {
   const displayRole = profile?.role
     ? roleMap[profile.role] || profile.role
     : user?.user_metadata?.role
-      ? roleMap[user.user_metadata.role]
-      : 'Carregando...'
+      ? roleMap[user.user_metadata.role] || user.user_metadata.role
+      : 'Administrador'
 
   const displayName =
     profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'
 
+  const displayPhoto = profile?.foto_url || user?.user_metadata?.avatar_url
+
   useEffect(() => {
-    const saved = localStorage.getItem('sidebar-order-v2')
-    if (saved) {
-      try {
-        const order = JSON.parse(saved)
-        const orderedItems = order
-          .map((title: string) => defaultNavItems.find((i) => i.title === title))
-          .filter(Boolean)
-        const missing = defaultNavItems.filter((i) => !order.includes(i.title))
-        setNavItems([...orderedItems, ...missing])
-      } catch (e) {
-        console.error('Failed to parse sidebar order', e)
+    const loadOrder = () => {
+      const saved = localStorage.getItem('sidebar-order-v2')
+      if (saved) {
+        try {
+          const order = JSON.parse(saved)
+          const orderedItems = order
+            .map((title: string) => defaultNavItems.find((i) => i.title === title))
+            .filter(Boolean)
+          const missing = defaultNavItems.filter((i) => !order.includes(i.title))
+          setNavItems([...orderedItems, ...missing])
+        } catch (e) {
+          console.error('Failed to parse sidebar order', e)
+        }
       }
     }
+
+    loadOrder()
+    window.addEventListener('sidebar-order-updated', loadOrder)
+    return () => window.removeEventListener('sidebar-order-updated', loadOrder)
   }, [])
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -154,9 +162,9 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md group/profile">
-          {profile?.foto_url ? (
+          {displayPhoto ? (
             <img
-              src={profile.foto_url}
+              src={displayPhoto}
               alt={displayName}
               className="h-10 w-10 rounded-full object-cover ring-2 ring-background shadow-sm"
             />
