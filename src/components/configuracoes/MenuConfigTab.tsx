@@ -20,7 +20,6 @@ const DEFAULT_MENU_ITEMS = [
   'Documentos',
   'Dash. Financeiro ACDOMZ',
   'Fin. Condomínio',
-  'Parecer Financeiro',
   'Comunicados',
   'SINDIA Bot',
   'Síndicos',

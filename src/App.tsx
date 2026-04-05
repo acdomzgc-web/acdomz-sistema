@@ -14,7 +14,6 @@ import FinanceiroAcdomz from './pages/FinanceiroAcdomz'
 import DespesasAcdomz from './pages/DespesasAcdomz'
 import DashboardFinanceiroAcdomz from './pages/DashboardFinanceiroAcdomz'
 import FinanceiroCondominio from './pages/FinanceiroCondominio'
-import ParecerFinanceiro from './pages/ParecerFinanceiro'
 import Comunicados from './pages/Comunicados'
 import Sindia from './pages/Sindia'
 import Sindicos from './pages/Sindicos'
@@ -50,7 +49,6 @@ const App = () => (
               <Route path="/despesas" element={<DespesasAcdomz />} />
               <Route path="/dashboard-financeiro" element={<DashboardFinanceiroAcdomz />} />
               <Route path="/financeiro-condominio" element={<FinanceiroCondominio />} />
-              <Route path="/parecer-financeiro" element={<ParecerFinanceiro />} />
               <Route path="/comunicados" element={<Comunicados />} />
               <Route path="/sindia" element={<Sindia />} />
               <Route path="/sindicos" element={<Sindicos />} />

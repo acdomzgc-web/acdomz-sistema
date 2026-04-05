@@ -17,13 +17,15 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Badge } from '@/components/ui/badge'
-import { Search, FileText, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Search, FileText, CheckCircle2, RefreshCw, Bot, Loader2, Info } from 'lucide-react'
 
 const mockChart = [
   { name: 'Jan', saldo: 15000 },
@@ -43,6 +45,11 @@ export default function FinanceiroCondominio() {
   const [docsInad, setDocsInad] = useState<any[]>([])
   const [dreExtraida, setDreExtraida] = useState<boolean>(false)
   const [isSearching, setIsSearching] = useState(false)
+
+  // States for Parecer Financeiro IA
+  const [parecerIA, setParecerIA] = useState('')
+  const [analyzedDocs, setAnalyzedDocs] = useState<string[]>([])
+  const [isGeneratingParecer, setIsGeneratingParecer] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -79,11 +86,9 @@ export default function FinanceiroCondominio() {
       const data = res.data || []
       setTransactions(data)
 
-      // Verifica se há dados na tabela com description contendo DRE (indício que foi extraído do PDF)
       const hasDreData = data.some((t) => t.description?.toUpperCase().includes('DRE'))
       setDreExtraida(hasDreData)
 
-      // Leitura da Inadimplência
       const { data: pastas } = await supabase
         .from('pastas_documentos')
         .select('id, name')
@@ -118,6 +123,9 @@ export default function FinanceiroCondominio() {
 
   useEffect(() => {
     fetchDashboardData()
+    // Reset Parecer state when condo or date changes
+    setParecerIA('')
+    setAnalyzedDocs([])
   }, [selectedCondo, selectedDate])
 
   const handleSincronizarDocumentos = async () => {
@@ -127,10 +135,8 @@ export default function FinanceiroCondominio() {
       description: 'Lendo documentos das pastas referenciadas no mês...',
     })
 
-    // Simulando delay de leitura de IA
     await new Promise((r) => setTimeout(r, 1500))
 
-    // Se não tiver dados de DRE ainda, insere uns de demonstração (simulando a Edge Function)
     if (!dreExtraida) {
       const monthPrefix = selectedDate.slice(0, 7)
       const mockTransactions = [
@@ -157,6 +163,31 @@ export default function FinanceiroCondominio() {
       description: 'Dados do DRE e Inadimplência atualizados na dashboard.',
     })
     fetchDashboardData()
+  }
+
+  const handleGerarParecer = async () => {
+    if (!selectedCondo || !selectedDate) return
+    setIsGeneratingParecer(true)
+
+    const period = selectedDate.slice(0, 7)
+    try {
+      const { data, error } = await supabase.functions.invoke('gerar-parecer-ia', {
+        body: { condominio_id: selectedCondo, period },
+      })
+      if (error) throw error
+
+      setParecerIA(data.content)
+      setAnalyzedDocs(data.analyzed_documents || [])
+
+      toast({
+        title: 'Sucesso',
+        description: 'Parecer gerado automaticamente analisando os documentos.',
+      })
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsGeneratingParecer(false)
+    }
   }
 
   const receitas = transactions
@@ -189,7 +220,7 @@ export default function FinanceiroCondominio() {
             Documentos
           </Button>
 
-          <div className="flex items-center bg-background border rounded-md px-2">
+          <div className="flex items-center bg-background border rounded-md px-2 h-10">
             <Search className="w-4 h-4 text-muted-foreground mr-2" />
             <Input
               type="date"
@@ -200,7 +231,7 @@ export default function FinanceiroCondominio() {
           </div>
           {role !== 'morador' && (
             <Select value={selectedCondo} onValueChange={setSelectedCondo}>
-              <SelectTrigger className="w-[250px] bg-background">
+              <SelectTrigger className="w-[250px] bg-background h-10">
                 <SelectValue placeholder="Selecione o Condomínio" />
               </SelectTrigger>
               <SelectContent>
@@ -215,141 +246,213 @@ export default function FinanceiroCondominio() {
         </div>
       </div>
 
-      <div
-        className={`space-y-6 transition-opacity duration-300 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-t-4 border-t-green-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-                Receitas do DRE
-                {dreExtraida && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">R$ {receitas.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Extraído do documento DRE</p>
-            </CardContent>
-          </Card>
-          <Card className="border-t-4 border-t-red-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-                Despesas do DRE
-                {dreExtraida && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-red-600">R$ {despesas.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Extraído do documento DRE</p>
-            </CardContent>
-          </Card>
-          <Card className="border-t-4 border-t-primary">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Saldo Líquido
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-primary' : 'text-red-500'}`}>
-                R$ {saldo.toFixed(2)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Fechamento do mês lido</p>
-            </CardContent>
-          </Card>
-          <Card className="border-t-4 border-t-amber-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Índice Inadimplência
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-amber-500">
-                {taxaInad > 0 ? taxaInad.toFixed(1) : '0.0'}%
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Lido de {docsInad.length} arquivo(s)
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      <Tabs defaultValue="dashboard" className="space-y-6">
+        <TabsList className="bg-muted/50 border">
+          <TabsTrigger value="dashboard">Dashboard & Evolução</TabsTrigger>
+          <TabsTrigger value="parecer" className="gap-2">
+            <Bot className="w-4 h-4" /> Parecer Automático IA
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 shadow-sm border-border/50">
-            <CardHeader className="py-4 border-b bg-muted/10">
-              <h3 className="font-semibold text-primary">Evolução do Saldo Consolidado</h3>
-            </CardHeader>
-            <CardContent className="p-4 h-[300px]">
-              <ChartContainer
-                config={{ saldo: { color: '#1a3a52', label: 'Saldo (DRE)' } }}
-                className="h-full w-full"
-              >
-                <LineChart data={mockChart}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line
-                    type="monotone"
-                    dataKey="saldo"
-                    stroke="var(--color-saldo)"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+        <TabsContent
+          value="dashboard"
+          className={`space-y-6 transition-opacity duration-300 ${isSearching ? 'opacity-50' : 'opacity-100'}`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-t-4 border-t-green-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
+                  Receitas do DRE
+                  {dreExtraida && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-green-600">R$ {receitas.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">Extraído do documento DRE</p>
+              </CardContent>
+            </Card>
+            <Card className="border-t-4 border-t-red-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
+                  Despesas do DRE
+                  {dreExtraida && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-red-600">R$ {despesas.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">Extraído do documento DRE</p>
+              </CardContent>
+            </Card>
+            <Card className="border-t-4 border-t-primary">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Saldo Líquido
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                  R$ {saldo.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Fechamento do mês lido</p>
+              </CardContent>
+            </Card>
+            <Card className="border-t-4 border-t-amber-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Índice Inadimplência
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-amber-500">
+                  {taxaInad > 0 ? taxaInad.toFixed(1) : '0.0'}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Lido de {docsInad.length} arquivo(s)
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="shadow-sm border-border/50 flex flex-col h-full">
-            <CardHeader className="py-4 border-b bg-amber-50">
-              <h3 className="font-semibold text-amber-800 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Extração de Inadimplência
-              </h3>
-            </CardHeader>
-            <CardContent className="p-0 overflow-auto max-h-[300px] flex-1">
-              <Table>
-                <TableHeader className="bg-muted/50 sticky top-0">
-                  <TableRow>
-                    <TableHead>Origem do Dado</TableHead>
-                    <TableHead className="text-right">Valor Estimado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {docsInad.length > 0 ? (
-                    docsInad.map((i) => (
-                      <TableRow key={i.id}>
-                        <TableCell>
-                          <div className="font-medium text-xs">{i.unit}</div>
-                          <Badge
-                            variant="outline"
-                            className="mt-1 text-[10px] text-amber-600 border-amber-200"
-                          >
-                            {i.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-red-600 font-semibold text-sm">
-                          R$ {i.amount}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2 shadow-sm border-border/50">
+              <CardHeader className="py-4 border-b bg-muted/10">
+                <h3 className="font-semibold text-primary">Evolução do Saldo Consolidado</h3>
+              </CardHeader>
+              <CardContent className="p-4 h-[300px]">
+                <ChartContainer
+                  config={{ saldo: { color: '#1a3a52', label: 'Saldo (DRE)' } }}
+                  className="h-full w-full"
+                >
+                  <LineChart data={mockChart}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                    <YAxis axisLine={false} tickLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="saldo"
+                      stroke="var(--color-saldo)"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-border/50 flex flex-col h-full">
+              <CardHeader className="py-4 border-b bg-amber-50">
+                <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Extração de Inadimplência
+                </h3>
+              </CardHeader>
+              <CardContent className="p-0 overflow-auto max-h-[300px] flex-1">
+                <Table>
+                  <TableHeader className="bg-muted/50 sticky top-0">
+                    <TableRow>
+                      <TableHead>Origem do Dado</TableHead>
+                      <TableHead className="text-right">Valor Estimado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {docsInad.length > 0 ? (
+                      docsInad.map((i) => (
+                        <TableRow key={i.id}>
+                          <TableCell>
+                            <div className="font-medium text-xs">{i.unit}</div>
+                            <Badge
+                              variant="outline"
+                              className="mt-1 text-[10px] text-amber-600 border-amber-200"
+                            >
+                              {i.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-red-600 font-semibold text-sm">
+                            R$ {i.amount}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={2}
+                          className="text-center py-8 text-muted-foreground text-sm"
+                        >
+                          Nenhum documento na pasta "Inadimplência" lido para a data informada.
                         </TableCell>
                       </TableRow>
-                    ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="parecer" className="space-y-6">
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="border-b bg-muted/10">
+              <CardTitle className="text-lg flex items-center gap-2">
+                Gerador de Parecer Financeiro Automático
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                A Inteligência Artificial analisará as pastas de documentos do condomínio referentes
+                ao período selecionado ({selectedDate.slice(0, 7)}) para formular uma análise
+                completa.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex justify-start">
+                <Button
+                  onClick={handleGerarParecer}
+                  disabled={isGeneratingParecer || isSearching || !selectedCondo}
+                  className="w-full md:w-auto shadow-sm"
+                  size="lg"
+                >
+                  {isGeneratingParecer ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={2}
-                        className="text-center py-8 text-muted-foreground text-sm"
-                      >
-                        Nenhum documento na pasta "Inadimplência" lido para a data informada.
-                      </TableCell>
-                    </TableRow>
+                    <Bot className="w-5 h-5 mr-2" />
                   )}
-                </TableBody>
-              </Table>
+                  {isGeneratingParecer
+                    ? 'Analisando documentos e gerando...'
+                    : 'Gerar Parecer IA agora'}
+                </Button>
+              </div>
+
+              {analyzedDocs.length > 0 && (
+                <Alert className="bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950 dark:border-blue-900 dark:text-blue-100 animate-fade-in-up">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <AlertTitle className="text-blue-800 dark:text-blue-300 font-semibold">
+                    Documentos Analisados pela IA
+                  </AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2 text-sm">
+                      Os seguintes documentos foram extraídos das pastas e utilizados como base de
+                      conhecimento para geração do parecer:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {analyzedDocs.map((doc, i) => (
+                        <li key={i} className="text-sm font-medium">
+                          {doc}
+                        </li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {parecerIA && (
+                <div className="bg-background border rounded-lg p-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground mt-4 shadow-sm animate-fade-in-up">
+                  {parecerIA}
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

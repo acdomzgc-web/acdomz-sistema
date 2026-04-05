@@ -37,7 +37,6 @@ const defaultNavItems = [
   { title: 'Documentos', url: '/documentos', icon: FileText },
   { title: 'Dash. Financeiro ACDOMZ', url: '/dashboard-financeiro', icon: PieChart },
   { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
-  { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
   { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
   { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
   { title: 'Síndicos', url: '/sindicos', icon: Users },
