@@ -59,11 +59,27 @@ export function AppSidebar() {
         .select('*')
         .eq('id', user.id)
         .single()
-        .then(({ data }) => {
+        .then(({ data, error }) => {
           if (data) setProfile(data)
+          else if (error) console.error('Error fetching profile:', error)
         })
     }
   }, [user?.id])
+
+  const roleMap: Record<string, string> = {
+    admin: 'Administrador',
+    sindico: 'Síndico',
+    morador: 'Morador',
+  }
+
+  const displayRole = profile?.role
+    ? roleMap[profile.role] || profile.role
+    : user?.user_metadata?.role
+      ? roleMap[user.user_metadata.role]
+      : 'Carregando...'
+
+  const displayName =
+    profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-order-v2')
@@ -137,24 +153,24 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 px-2 py-1.5 rounded-md bg-muted/50 border border-border/50">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md group/profile">
           {profile?.foto_url ? (
             <img
               src={profile.foto_url}
-              alt={profile.name}
-              className="h-8 w-8 rounded-full object-cover"
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-background shadow-sm"
             />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs uppercase">
-              {profile?.name?.substring(0, 2) || user?.email?.substring(0, 2) || 'AD'}
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-sm uppercase shadow-sm">
+              {displayName.substring(0, 2)}
             </div>
           )}
           <div className="flex flex-col text-sm truncate">
-            <span className="font-semibold text-foreground leading-none truncate">
-              {profile?.name || 'Carregando...'}
+            <span className="font-semibold text-foreground leading-tight truncate">
+              {displayName}
             </span>
-            <span className="text-xs text-muted-foreground mt-1 capitalize">
-              {profile?.role || 'Admin'}
+            <span className="text-xs font-medium text-muted-foreground capitalize mt-0.5">
+              {displayRole}
             </span>
           </div>
         </div>

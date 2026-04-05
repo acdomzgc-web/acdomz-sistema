@@ -8,11 +8,22 @@ import {
   Briefcase,
   UserCheck,
   Settings2,
+  Activity,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  Line,
+  LineChart,
+  Bar,
+  BarChart,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import {
   Select,
   SelectContent,
@@ -58,30 +69,28 @@ export function AdminOverview() {
     despesa: 0,
     lucro: 0,
   })
-
   const [recentCondos, setRecentCondos] = useState<any[]>([])
-
   const [period, setPeriod] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
-  const [chartType, setChartType] = useState<'line' | 'bar'>('line')
+  const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area')
   const [chartData, setChartData] = useState<any[]>([])
-
-  const defaultVisibleKpis = {
-    administradoras: true,
-    condominios: true,
-    sindicos: true,
-    moradores: true,
-    receita: true,
-    despesa: true,
-    lucro: true,
-  }
 
   const [visibleKpis, setVisibleKpis] = useState(() => {
     const saved = localStorage.getItem('acdomz-kpi-prefs')
-    return saved ? JSON.parse(saved) : defaultVisibleKpis
+    return saved
+      ? JSON.parse(saved)
+      : {
+          administradoras: true,
+          condominios: true,
+          sindicos: true,
+          moradores: true,
+          receita: true,
+          despesa: true,
+          lucro: true,
+        }
   })
 
-  const handleKpiToggle = (key: keyof typeof visibleKpis) => {
+  const handleKpiToggle = (key: string) => {
     const newPrefs = { ...visibleKpis, [key]: !visibleKpis[key] }
     setVisibleKpis(newPrefs)
     localStorage.setItem('acdomz-kpi-prefs', JSON.stringify(newPrefs))
@@ -205,25 +214,79 @@ export function AdminOverview() {
           expense: dataByMonth[k].expense,
         }))
 
-      if (builtChartData.length === 0) {
-        builtChartData = revenueData
-      }
-
-      setChartData(builtChartData)
+      setChartData(builtChartData.length === 0 ? revenueData : builtChartData)
     }
     loadData()
   }, [period, selectedMonth])
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-  }
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+
+  const kpis = [
+    {
+      id: 'administradoras',
+      title: 'Administradoras Parceiras',
+      value: stats.administradoras.toString(),
+      icon: Briefcase,
+      trend: '+1',
+      color: 'green',
+    },
+    {
+      id: 'condominios',
+      title: 'Total Condomínios',
+      value: stats.condominios.toString(),
+      icon: Building,
+      trend: '+2',
+      color: 'green',
+    },
+    {
+      id: 'sindicos',
+      title: 'Total Síndicos',
+      value: stats.sindicos.toString(),
+      icon: UserCheck,
+      trend: '+3',
+      color: 'green',
+    },
+    {
+      id: 'moradores',
+      title: 'Total Moradores',
+      value: stats.moradores.toString(),
+      icon: Users,
+      trend: '+12',
+      color: 'green',
+    },
+    {
+      id: 'receita',
+      title: 'Receita Consolidada',
+      value: formatCurrency(stats.receita),
+      icon: DollarSign,
+      trend: '+8%',
+      color: 'green',
+    },
+    {
+      id: 'despesa',
+      title: 'Despesa Consolidada',
+      value: formatCurrency(stats.despesa),
+      icon: TrendingDown,
+      trend: '-3%',
+      color: 'green',
+    },
+    {
+      id: 'lucro',
+      title: 'Lucro Líquido',
+      value: formatCurrency(stats.lucro),
+      icon: TrendingUp,
+      trend: '+12%',
+      color: 'green',
+    },
+  ] as const
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 animate-fade-in pb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card/50 p-4 rounded-xl border border-border/40 backdrop-blur-sm shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[160px] bg-background shadow-sm">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
@@ -240,29 +303,26 @@ export function AdminOverview() {
               value={selectedMonth.toString()}
               onValueChange={(v) => setSelectedMonth(parseInt(v))}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[140px] bg-background shadow-sm">
                 <SelectValue placeholder="Mês" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Janeiro</SelectItem>
-                <SelectItem value="2">Fevereiro</SelectItem>
-                <SelectItem value="3">Março</SelectItem>
-                <SelectItem value="4">Abril</SelectItem>
-                <SelectItem value="5">Maio</SelectItem>
-                <SelectItem value="6">Junho</SelectItem>
-                <SelectItem value="7">Julho</SelectItem>
-                <SelectItem value="8">Agosto</SelectItem>
-                <SelectItem value="9">Setembro</SelectItem>
-                <SelectItem value="10">Outubro</SelectItem>
-                <SelectItem value="11">Novembro</SelectItem>
-                <SelectItem value="12">Dezembro</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <SelectItem key={m} value={m.toString()}>
+                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           )}
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-background shadow-sm hover:shadow-md transition-all"
+            >
               <Settings2 className="h-4 w-4" /> Personalizar Métricas
             </Button>
           </DialogTrigger>
@@ -270,197 +330,144 @@ export function AdminOverview() {
             <DialogHeader>
               <DialogTitle>Personalizar Dashboard</DialogTitle>
             </DialogHeader>
-            <div className="py-4 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Selecione quais métricas deseja exibir no painel principal.
+            <div className="py-4 grid gap-3">
+              <p className="text-sm text-muted-foreground mb-2">
+                Selecione as métricas que deseja exibir.
               </p>
-              <div className="grid gap-3">
-                <div className="flex items-center space-x-2">
+              {kpis.map((kpi) => (
+                <div
+                  key={kpi.id}
+                  className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                >
                   <Checkbox
-                    id="kpi-admin"
-                    checked={visibleKpis.administradoras}
-                    onCheckedChange={() => handleKpiToggle('administradoras')}
+                    id={`kpi-${kpi.id}`}
+                    checked={visibleKpis[kpi.id as keyof typeof visibleKpis]}
+                    onCheckedChange={() => handleKpiToggle(kpi.id)}
                   />
                   <label
-                    htmlFor="kpi-admin"
-                    className="text-sm font-medium leading-none cursor-pointer"
+                    htmlFor={`kpi-${kpi.id}`}
+                    className="text-sm font-medium leading-none cursor-pointer flex-1"
                   >
-                    Administradoras Parceiras
+                    {kpi.title}
                   </label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-condo"
-                    checked={visibleKpis.condominios}
-                    onCheckedChange={() => handleKpiToggle('condominios')}
-                  />
-                  <label
-                    htmlFor="kpi-condo"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Condomínios
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-sindicos"
-                    checked={visibleKpis.sindicos}
-                    onCheckedChange={() => handleKpiToggle('sindicos')}
-                  />
-                  <label
-                    htmlFor="kpi-sindicos"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Síndicos
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-moradores"
-                    checked={visibleKpis.moradores}
-                    onCheckedChange={() => handleKpiToggle('moradores')}
-                  />
-                  <label
-                    htmlFor="kpi-moradores"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Total Moradores
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-receita"
-                    checked={visibleKpis.receita}
-                    onCheckedChange={() => handleKpiToggle('receita')}
-                  />
-                  <label
-                    htmlFor="kpi-receita"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Receita Consolidada
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-despesa"
-                    checked={visibleKpis.despesa}
-                    onCheckedChange={() => handleKpiToggle('despesa')}
-                  />
-                  <label
-                    htmlFor="kpi-despesa"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Despesa Consolidada
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="kpi-lucro"
-                    checked={visibleKpis.lucro}
-                    onCheckedChange={() => handleKpiToggle('lucro')}
-                  />
-                  <label
-                    htmlFor="kpi-lucro"
-                    className="text-sm font-medium leading-none cursor-pointer"
-                  >
-                    Lucro Líquido
-                  </label>
-                </div>
-              </div>
+              ))}
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {visibleKpis.administradoras && (
-          <KpiCard
-            title="Administradoras Parceiras"
-            value={stats.administradoras.toString()}
-            icon={Briefcase}
-            trend="+1"
-          />
-        )}
-        {visibleKpis.condominios && (
-          <KpiCard
-            title="Total Condomínios"
-            value={stats.condominios.toString()}
-            icon={Building}
-            trend="+2"
-          />
-        )}
-        {visibleKpis.sindicos && (
-          <KpiCard
-            title="Total Síndicos"
-            value={stats.sindicos.toString()}
-            icon={UserCheck}
-            trend="+3"
-          />
-        )}
-        {visibleKpis.moradores && (
-          <KpiCard
-            title="Total Moradores"
-            value={stats.moradores.toString()}
-            icon={Users}
-            trend="+12"
-          />
-        )}
-        {visibleKpis.receita && (
-          <KpiCard
-            title="Receita Consolidada"
-            value={formatCurrency(stats.receita)}
-            icon={DollarSign}
-            trend="+8%"
-          />
-        )}
-        {visibleKpis.despesa && (
-          <KpiCard
-            title="Despesa Consolidada"
-            value={formatCurrency(stats.despesa)}
-            icon={TrendingDown}
-            trend="-3%"
-          />
-        )}
-        {visibleKpis.lucro && (
-          <KpiCard
-            title="Lucro Líquido"
-            value={formatCurrency(stats.lucro)}
-            icon={TrendingUp}
-            trend="+12%"
-          />
+        {kpis.map(
+          (kpi) =>
+            visibleKpis[kpi.id as keyof typeof visibleKpis] && (
+              <KpiCard
+                key={kpi.id}
+                title={kpi.title}
+                value={kpi.value}
+                icon={kpi.icon}
+                trend={kpi.trend}
+                trendColor={kpi.color as 'green' | 'red'}
+              />
+            ),
         )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">
-        <Card className="md:col-span-4 hover-lift">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>Evolução Financeira</CardTitle>
+        <Card className="md:col-span-4 overflow-hidden border-border/40 shadow-sm transition-all hover:shadow-md bg-gradient-to-b from-card to-card/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border/40 bg-card/50">
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Evolução Financeira</CardTitle>
+            </div>
             <Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-background shadow-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="line">Linhas</SelectItem>
-                <SelectItem value="bar">Barras</SelectItem>
+                <SelectItem value="area">Área (Evolução)</SelectItem>
+                <SelectItem value="line">Linhas (Tendência)</SelectItem>
+                <SelectItem value="bar">Barras (Comparativo)</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>
-          <CardContent className="pl-2">
+          <CardContent className="pl-2 pt-6">
             <ChartContainer
               config={{
                 revenue: { label: 'Receitas', color: 'hsl(var(--chart-1))' },
-                expense: { label: 'Despesas', color: 'hsl(var(--chart-2))' },
+                expense: { label: 'Despesas', color: 'hsl(var(--chart-5))' },
               }}
-              className="h-[300px]"
+              className="h-[320px] w-full"
             >
-              {chartType === 'line' ? (
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+              {chartType === 'area' ? (
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-expense)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--color-expense)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dy={10}
+                  />
                   <YAxis
                     tickFormatter={(val) => `R$${val / 1000}k`}
                     tickLine={false}
                     axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dx={-10}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    fillOpacity={1}
+                    fill="url(#colorRev)"
+                    strokeWidth={3}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expense"
+                    stroke="var(--color-expense)"
+                    fillOpacity={1}
+                    fill="url(#colorExp)"
+                    strokeWidth={3}
+                  />
+                </AreaChart>
+              ) : chartType === 'line' ? (
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    tickFormatter={(val) => `R$${val / 1000}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dx={-10}
                   />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line
@@ -468,54 +475,91 @@ export function AdminOverview() {
                     dataKey="revenue"
                     stroke="var(--color-revenue)"
                     strokeWidth={3}
-                    dot={false}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="expense"
                     stroke="var(--color-expense)"
                     strokeWidth={3}
-                    dot={false}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               ) : (
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dy={10}
+                  />
                   <YAxis
                     tickFormatter={(val) => `R$${val / 1000}k`}
                     tickLine={false}
                     axisLine={false}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    dx={-10}
                   />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="revenue"
+                    fill="var(--color-revenue)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={40}
+                  />
+                  <Bar
+                    dataKey="expense"
+                    fill="var(--color-expense)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={40}
+                  />
                 </BarChart>
               )}
             </ChartContainer>
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-3 hover-lift">
-          <CardHeader>
-            <CardTitle>Condomínios Recentes</CardTitle>
+        <Card className="md:col-span-3 border-border/40 shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="border-b border-border/40 bg-card/50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Building className="h-5 w-5 text-primary" /> Condomínios Recentes
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="text-right">Unidades</TableHead>
-                  <TableHead className="text-right">SINDIA</TableHead>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="font-semibold text-foreground">Nome</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">
+                    Unidades
+                  </TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">
+                    Status SINDIA
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentCondos.map((condo) => (
-                  <TableRow key={condo.id}>
+                  <TableRow key={condo.id} className="transition-colors hover:bg-muted/30">
                     <TableCell className="font-medium">{condo.name}</TableCell>
                     <TableCell className="text-right">{condo.total_units || '-'}</TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={condo.sindia_active ? 'default' : 'secondary'}>
+                      <Badge
+                        variant={condo.sindia_active ? 'default' : 'secondary'}
+                        className={
+                          condo.sindia_active
+                            ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-0'
+                            : ''
+                        }
+                      >
                         {condo.sindia_active ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </TableCell>
@@ -525,9 +569,12 @@ export function AdminOverview() {
                   <TableRow>
                     <TableCell
                       colSpan={3}
-                      className="text-center py-4 text-muted-foreground text-sm"
+                      className="text-center py-8 text-muted-foreground text-sm"
                     >
-                      Nenhum condomínio cadastrado.
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Building className="h-8 w-8 text-muted-foreground/50" />
+                        <p>Nenhum condomínio cadastrado.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -545,24 +592,40 @@ function KpiCard({
   value,
   icon: Icon,
   trend,
+  trendColor,
 }: {
   title: string
   value: string
   icon: any
   trend: string
+  trendColor: 'green' | 'red'
 }) {
-  const isPositive = trend.startsWith('+')
+  const isGreen = trendColor === 'green'
   return (
-    <Card className="hover-lift">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-1 border border-border/40 bg-gradient-to-br from-card to-card/80 group">
+      <div className="absolute -right-6 -top-6 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity pointer-events-none transform group-hover:scale-110 duration-500">
+        <Icon className="h-32 w-32" />
+      </div>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-secondary" />
+        <div
+          className={`p-2 rounded-lg ${isGreen ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-primary">{value}</div>
-        <p className={`text-xs mt-1 font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          {trend} no período
-        </p>
+      <CardContent className="relative z-10 pt-2">
+        <div className="text-3xl font-bold tracking-tight text-foreground">{value}</div>
+        <div className="flex items-center mt-3">
+          <span
+            className={`text-xs font-semibold px-2 py-1 rounded-md ${isGreen ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}
+          >
+            {trend}
+          </span>
+          <span className="text-xs text-muted-foreground ml-2 font-medium">
+            vs. período anterior
+          </span>
+        </div>
       </CardContent>
     </Card>
   )
