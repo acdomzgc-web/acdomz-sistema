@@ -91,7 +91,9 @@ export function AppSidebar() {
       if (savedNamesStr) {
         try {
           customNames = JSON.parse(savedNamesStr)
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to parse custom names', e)
+        }
       }
 
       if (saved) {
