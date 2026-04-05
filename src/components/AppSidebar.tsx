@@ -86,6 +86,14 @@ export function AppSidebar() {
   useEffect(() => {
     const loadOrder = () => {
       const saved = localStorage.getItem('sidebar-order-v2')
+      const savedNamesStr = localStorage.getItem('sidebar-custom-names')
+      let customNames: Record<string, string> = {}
+      if (savedNamesStr) {
+        try {
+          customNames = JSON.parse(savedNamesStr)
+        } catch (e) {}
+      }
+
       if (saved) {
         try {
           const order = JSON.parse(saved)
@@ -93,10 +101,23 @@ export function AppSidebar() {
             .map((title: string) => defaultNavItems.find((i) => i.title === title))
             .filter(Boolean)
           const missing = defaultNavItems.filter((i) => !order.includes(i.title))
-          setNavItems([...orderedItems, ...missing])
+
+          const merged = [...orderedItems, ...missing].map((item) => ({
+            ...item,
+            displayTitle: customNames[item.title] || item.title,
+          }))
+
+          setNavItems(merged as any)
         } catch (e) {
           console.error('Failed to parse sidebar order', e)
         }
+      } else {
+        setNavItems(
+          defaultNavItems.map((item) => ({
+            ...item,
+            displayTitle: customNames[item.title] || item.title,
+          })) as any,
+        )
       }
     }
 
@@ -148,12 +169,12 @@ export function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === item.url}
-                tooltip={item.title}
+                tooltip={(item as any).displayTitle || item.title}
                 className="transition-all duration-200"
               >
                 <Link to={item.url}>
                   <item.icon />
-                  <span>{item.title}</span>
+                  <span>{(item as any).displayTitle || item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

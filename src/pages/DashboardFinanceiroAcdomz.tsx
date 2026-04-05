@@ -30,6 +30,7 @@ export default function DashboardFinanceiroAcdomz() {
   const [period, setPeriod] = useState<string>('last_3')
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('area')
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   const [summary, setSummary] = useState({ receita: 0, despesa: 0, lucro: 0, roi: 0 })
   const [chartData, setChartData] = useState<any[]>([])
@@ -148,40 +149,42 @@ export default function DashboardFinanceiroAcdomz() {
             Gestão unificada, elegante e precisa de receitas, despesas e ROI.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px] bg-background">
-              <SelectValue placeholder="Selecione o Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="specific_month">Mês Específico</SelectItem>
-              <SelectItem value="last_3">Últimos 3 Meses</SelectItem>
-              <SelectItem value="last_6">Últimos 6 Meses</SelectItem>
-              <SelectItem value="annual">Anual</SelectItem>
-              <SelectItem value="all">Todo o Período</SelectItem>
-            </SelectContent>
-          </Select>
-          {period === 'specific_month' && (
-            <Select
-              value={selectedMonth.toString()}
-              onValueChange={(v) => setSelectedMonth(parseInt(v))}
-            >
-              <SelectTrigger className="w-[140px] bg-background shadow-sm">
-                <SelectValue placeholder="Mês" />
+        {activeTab === 'dashboard' && (
+          <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[180px] bg-background">
+                <SelectValue placeholder="Selecione o Período" />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <SelectItem key={m} value={m.toString()}>
-                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
-                  </SelectItem>
-                ))}
+                <SelectItem value="specific_month">Mês Específico</SelectItem>
+                <SelectItem value="last_3">Últimos 3 Meses</SelectItem>
+                <SelectItem value="last_6">Últimos 6 Meses</SelectItem>
+                <SelectItem value="annual">Anual</SelectItem>
+                <SelectItem value="all">Todo o Período</SelectItem>
               </SelectContent>
             </Select>
-          )}
-        </div>
+            {period === 'specific_month' && (
+              <Select
+                value={selectedMonth.toString()}
+                onValueChange={(v) => setSelectedMonth(parseInt(v))}
+              >
+                <SelectTrigger className="w-[140px] bg-background shadow-sm">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <SelectItem key={m} value={m.toString()}>
+                      {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 bg-muted/50 p-1">
           <TabsTrigger value="dashboard" className="rounded-md">
             Dashboard & Evolução
