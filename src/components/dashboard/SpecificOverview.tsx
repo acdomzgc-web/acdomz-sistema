@@ -21,11 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 
 export function SpecificOverview() {
   const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState<string>('')
   const [period, setPeriod] = useState<string>('all')
+  const [specificMonth, setSpecificMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar')
 
   const [summary, setSummary] = useState({
@@ -71,8 +76,14 @@ export function SpecificOverview() {
         start = new Date(year, q * 3, 1)
         end = new Date(year, q * 3 + 3, 0)
       } else if (period === 'month') {
-        start = new Date(year, now.getMonth(), 1)
-        end = new Date(year, now.getMonth() + 1, 0)
+        if (specificMonth) {
+          const [y, m] = specificMonth.split('-')
+          start = new Date(parseInt(y), parseInt(m) - 1, 1)
+          end = new Date(parseInt(y), parseInt(m), 0)
+        } else {
+          start = new Date(year, now.getMonth(), 1)
+          end = new Date(year, now.getMonth() + 1, 0)
+        }
       }
 
       const { data: condoData } = await supabase
@@ -166,7 +177,7 @@ export function SpecificOverview() {
     }
 
     loadData()
-  }, [selectedCondo, period])
+  }, [selectedCondo, period, specificMonth])
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
@@ -207,6 +218,15 @@ export function SpecificOverview() {
               <SelectItem value="month">Mensal</SelectItem>
             </SelectContent>
           </Select>
+
+          {period === 'month' && (
+            <Input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="w-[160px] shadow-sm bg-background"
+            />
+          )}
         </div>
       </div>
 
