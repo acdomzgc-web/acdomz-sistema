@@ -28,10 +28,7 @@ import {
 
 export default function DashboardFinanceiroAcdomz() {
   const [period, setPeriod] = useState<string>('last_3')
-  const [specificMonth, setSpecificMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('area')
 
   const [summary, setSummary] = useState({ receita: 0, despesa: 0, lucro: 0, roi: 0 })
@@ -40,7 +37,7 @@ export default function DashboardFinanceiroAcdomz() {
 
   useEffect(() => {
     loadData()
-  }, [period, specificMonth])
+  }, [period, selectedMonth])
 
   const loadData = async () => {
     setLoading(true)
@@ -49,9 +46,8 @@ export default function DashboardFinanceiroAcdomz() {
     let end = new Date(2100, 11, 31)
 
     if (period === 'specific_month') {
-      const [y, m] = specificMonth.split('-')
-      start = new Date(parseInt(y), parseInt(m) - 1, 1)
-      end = new Date(parseInt(y), parseInt(m), 0)
+      start = new Date(now.getFullYear(), selectedMonth - 1, 1)
+      end = new Date(now.getFullYear(), selectedMonth, 0)
     } else if (period === 'last_3') {
       start = new Date(now.getFullYear(), now.getMonth() - 2, 1)
       end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -166,12 +162,21 @@ export default function DashboardFinanceiroAcdomz() {
             </SelectContent>
           </Select>
           {period === 'specific_month' && (
-            <Input
-              type="month"
-              value={specificMonth}
-              onChange={(e) => setSpecificMonth(e.target.value)}
-              className="w-[160px] bg-background"
-            />
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(v) => setSelectedMonth(parseInt(v))}
+            >
+              <SelectTrigger className="w-[140px] bg-background shadow-sm">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <SelectItem key={m} value={m.toString()}>
+                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
       </div>

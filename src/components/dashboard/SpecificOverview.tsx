@@ -27,10 +27,7 @@ export function SpecificOverview() {
   const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState<string>('')
   const [period, setPeriod] = useState<string>('all')
-  const [specificMonth, setSpecificMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar')
 
   const [summary, setSummary] = useState({
@@ -76,14 +73,8 @@ export function SpecificOverview() {
         start = new Date(year, q * 3, 1)
         end = new Date(year, q * 3 + 3, 0)
       } else if (period === 'month') {
-        if (specificMonth) {
-          const [y, m] = specificMonth.split('-')
-          start = new Date(parseInt(y), parseInt(m) - 1, 1)
-          end = new Date(parseInt(y), parseInt(m), 0)
-        } else {
-          start = new Date(year, now.getMonth(), 1)
-          end = new Date(year, now.getMonth() + 1, 0)
-        }
+        start = new Date(year, selectedMonth - 1, 1)
+        end = new Date(year, selectedMonth, 0)
       }
 
       const { data: condoData } = await supabase
@@ -177,7 +168,7 @@ export function SpecificOverview() {
     }
 
     loadData()
-  }, [selectedCondo, period, specificMonth])
+  }, [selectedCondo, period, selectedMonth])
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
@@ -220,12 +211,21 @@ export function SpecificOverview() {
           </Select>
 
           {period === 'month' && (
-            <Input
-              type="month"
-              value={specificMonth}
-              onChange={(e) => setSpecificMonth(e.target.value)}
-              className="w-[160px] shadow-sm bg-background"
-            />
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(v) => setSelectedMonth(parseInt(v))}
+            >
+              <SelectTrigger className="w-[140px] bg-background shadow-sm">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <SelectItem key={m} value={m.toString()}>
+                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
       </div>

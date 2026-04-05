@@ -123,16 +123,14 @@ export function AdminOverview() {
       if (period === 'year') {
         start = new Date(year, 0, 1)
         end = new Date(year, 11, 31)
-      } else if (period === 'semester') {
-        const isFirst = now.getMonth() < 6
-        start = new Date(year, isFirst ? 0 : 6, 1)
-        end = new Date(year, isFirst ? 5 : 11, isFirst ? 30 : 31)
-        monthsCount = 6
-      } else if (period === 'quarter') {
-        const q = Math.floor(now.getMonth() / 3)
-        start = new Date(year, q * 3, 1)
-        end = new Date(year, q * 3 + 3, 0)
+      } else if (period === 'last_3') {
+        start = new Date(year, now.getMonth() - 2, 1)
+        end = new Date(year, now.getMonth() + 1, 0)
         monthsCount = 3
+      } else if (period === 'last_6') {
+        start = new Date(year, now.getMonth() - 5, 1)
+        end = new Date(year, now.getMonth() + 1, 0)
+        monthsCount = 6
       } else if (period === 'month') {
         start = new Date(year, selectedMonth - 1, 1)
         end = new Date(year, selectedMonth, 0)
@@ -308,11 +306,11 @@ export function AdminOverview() {
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="month">Mensal</SelectItem>
+              <SelectItem value="last_3">Últimos 3 Meses</SelectItem>
+              <SelectItem value="last_6">Últimos 6 Meses</SelectItem>
+              <SelectItem value="year">Anual</SelectItem>
               <SelectItem value="all">Todo o Período</SelectItem>
-              <SelectItem value="year">Este Ano</SelectItem>
-              <SelectItem value="semester">Este Semestre</SelectItem>
-              <SelectItem value="quarter">Este Trimestre</SelectItem>
-              <SelectItem value="month">Mês Específico</SelectItem>
             </SelectContent>
           </Select>
 
