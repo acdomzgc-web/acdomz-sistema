@@ -1,210 +1,165 @@
+import { Link, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/lib/supabase/client'
 import {
-  Building2,
-  Calculator,
+  Building,
+  Users,
   FileText,
   LayoutDashboard,
-  Settings,
-  UserCog,
-  Users,
+  Building2,
+  PieChart,
   Wallet,
-  LogOut,
-  ChevronsUpDown,
-  ShieldCheck,
+  Megaphone,
+  Bot,
+  Calculator,
+  BarChart2,
+  Settings,
+  GripVertical,
 } from 'lucide-react'
-import { useLocation, Link, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
-
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
+  SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
+  SidebarRail,
 } from '@/components/ui/sidebar'
-import { Logo } from './Logo'
-import { useAuth } from '@/hooks/use-auth'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { usePreferences, MenuItemId } from '@/hooks/use-preferences'
+import { Logo } from '@/components/Logo'
 
-const MENU_ITEMS_MAP: Record<MenuItemId, any> = {
-  dashboard: { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  condominios: { title: 'Condomínios', url: '/condominios', icon: Building2 },
-  moradores: { title: 'Moradores', url: '/moradores', icon: Users },
-  documentos: { title: 'Documentos', url: '/documentos', icon: FileText },
-  financeiro: { title: 'Fin. Condomínio', url: '/financeiro', icon: Wallet },
-  sindicos: { title: 'Síndicos', url: '/sindicos', icon: UserCog },
-  calculadora: { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
-  configuracoes: { title: 'Configurações', url: '/configuracoes', icon: Settings },
-}
+const defaultNavItems = [
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Administradoras', url: '/administradoras', icon: Building2 },
+  { title: 'Condomínios', url: '/condominios', icon: Building },
+  { title: 'Moradores', url: '/moradores', icon: Users },
+  { title: 'Documentos', url: '/documentos', icon: FileText },
+  { title: 'Dash. Financeiro ACDOMZ', url: '/dashboard-financeiro', icon: PieChart },
+  { title: 'Fin. Condomínio', url: '/financeiro-condominio', icon: Wallet },
+  { title: 'Parecer Financeiro', url: '/parecer-financeiro', icon: FileText },
+  { title: 'Comunicados', url: '/comunicados', icon: Megaphone },
+  { title: 'SINDIA Bot', url: '/sindia', icon: Bot },
+  { title: 'Síndicos', url: '/sindicos', icon: Users },
+  { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
+  { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
+  { title: 'Configurações', url: '/configuracoes', icon: Settings },
+]
 
 export function AppSidebar() {
   const location = useLocation()
-  const { signOut, user } = useAuth()
-  const navigate = useNavigate()
-  const { menuOrder } = usePreferences()
-
-  const [profile, setProfile] = useState<{
-    name: string
-    role: string
-    foto_url?: string
-  } | null>(null)
+  const { user } = useAuth()
+  const [navItems, setNavItems] = useState(defaultNavItems)
+  const [profile, setProfile] = useState<any>(null)
 
   useEffect(() => {
     if (user?.id) {
-      const fetchProfile = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('name, role, foto_url')
-            .eq('id', user.id)
-            .single()
-          if (!error && data) {
-            setProfile(data as any)
-          } else if (user.user_metadata) {
-            setProfile({
-              name: user.user_metadata.name || user.email?.split('@')[0] || 'Usuário',
-              role: user.user_metadata.role || 'morador',
-              foto_url: user.user_metadata.avatar_url || '',
-            })
-          }
-        } catch (e) {
-          console.error('Error fetching profile', e)
-        }
-      }
-      fetchProfile()
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setProfile(data)
+        })
     }
-  }, [user])
+  }, [user?.id])
 
-  const handleSignOut = async () => {
-    await signOut()
-    navigate('/auth')
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-order-v2')
+    if (saved) {
+      try {
+        const order = JSON.parse(saved)
+        const orderedItems = order
+          .map((title: string) => defaultNavItems.find((i) => i.title === title))
+          .filter(Boolean)
+        const missing = defaultNavItems.filter((i) => !order.includes(i.title))
+        setNavItems([...orderedItems, ...missing])
+      } catch (e) {
+        console.error('Failed to parse sidebar order', e)
+      }
+    }
+  }, [])
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', index.toString())
   }
 
-  const items = menuOrder.map((id) => ({ id, ...MENU_ITEMS_MAP[id] })).filter((item) => item.title)
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'))
+    if (sourceIndex === targetIndex || isNaN(sourceIndex)) return
 
-  const userName =
-    profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuário'
-  const userInitials = userName.substring(0, 2).toUpperCase()
+    const newItems = [...navItems]
+    const [removed] = newItems.splice(sourceIndex, 1)
+    newItems.splice(targetIndex, 0, removed)
 
-  // Use metadata role as fallback if profile is missing
-  const currentRole = profile?.role || user?.user_metadata?.role || 'morador'
+    setNavItems(newItems)
+    localStorage.setItem('sidebar-order-v2', JSON.stringify(newItems.map((i) => i.title)))
+  }
 
-  const userRole =
-    currentRole === 'admin' ? 'Administrador' : currentRole === 'sindico' ? 'Síndico' : 'Morador'
-  const isAdmin = currentRole === 'admin'
-  const isSindico = currentRole === 'sindico'
-  const userAvatar =
-    profile?.foto_url ||
-    user?.user_metadata?.avatar_url ||
-    `https://img.usecurling.com/ppl/thumbnail?seed=${user?.id || '1'}`
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
 
   return (
-    <Sidebar className="border-r border-border">
-      <SidebarHeader className="p-4 border-b border-border/50 bg-background/50 backdrop-blur-sm">
-        <Logo />
+    <Sidebar>
+      <SidebarHeader className="p-4">
+        <Logo iconClassName="h-8 w-8" textClassName="text-2xl" />
       </SidebarHeader>
-      <SidebarContent className="px-2 py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
-              {items.map((item) => {
-                const isActive =
-                  location.pathname === item.url ||
-                  (item.url !== '/' && location.pathname.startsWith(item.url))
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className="transition-all duration-200 hover:bg-primary/5 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-medium rounded-lg px-3 py-5"
-                    >
-                      <Link to={item.url} className="flex items-center gap-3">
-                        <item.icon
-                          className={`h-5 w-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
-                        />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter className="border-t p-3">
+      <SidebarContent className="px-2">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-muted/50 transition-colors rounded-xl p-2 h-auto"
-                >
-                  <Avatar className="h-9 w-9 rounded-lg border border-border/50 shadow-sm">
-                    <AvatarImage src={userAvatar} alt={userName} />
-                    <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold">
-                      {userInitials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight ml-2">
-                    <span className="truncate font-semibold">{userName}</span>
-                    <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
-                      {(isAdmin || isSindico) && <ShieldCheck className="w-3 h-3 text-primary" />}
-                      {userRole}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="bottom"
-                align="end"
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-xl shadow-lg pb-2"
+          {navItems.map((item, index) => (
+            <SidebarMenuItem
+              key={item.title}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragOver={handleDragOver}
+              className="group/item relative"
+            >
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full opacity-0 group-hover/item:opacity-100 cursor-grab px-1 z-10 hover:text-primary">
+                <GripVertical className="h-4 w-4" />
+              </div>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === item.url}
+                tooltip={item.title}
+                className="transition-all duration-200"
               >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-3 px-3 py-4 text-left text-sm bg-muted/30 rounded-t-xl mb-1">
-                    <Avatar className="h-12 w-12 rounded-lg border shadow-sm">
-                      <AvatarImage src={userAvatar} alt={userName} />
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-semibold text-lg">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold text-base">{userName}</span>
-                      <span className="truncate text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        {(isAdmin || isSindico) && <ShieldCheck className="w-3 h-3 text-primary" />}
-                        {userRole}
-                      </span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="text-destructive focus:text-destructive cursor-pointer py-2.5 mx-1 rounded-md mt-1"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span className="font-medium">Sair do sistema</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
+                <Link to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter className="p-4">
+        <div className="flex items-center gap-3 px-2 py-1.5 rounded-md bg-muted/50 border border-border/50">
+          {profile?.foto_url ? (
+            <img
+              src={profile.foto_url}
+              alt={profile.name}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs uppercase">
+              {profile?.name?.substring(0, 2) || user?.email?.substring(0, 2) || 'AD'}
+            </div>
+          )}
+          <div className="flex flex-col text-sm truncate">
+            <span className="font-semibold text-foreground leading-none truncate">
+              {profile?.name || 'Carregando...'}
+            </span>
+            <span className="text-xs text-muted-foreground mt-1 capitalize">
+              {profile?.role || 'Admin'}
+            </span>
+          </div>
+        </div>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

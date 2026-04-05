@@ -1,19 +1,18 @@
-import { useState, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
 import {
-  Building2,
+  Building,
   Users,
-  Wallet,
+  DollarSign,
   TrendingUp,
   TrendingDown,
-  Building,
-  ShieldCheck,
+  Briefcase,
+  UserCheck,
   Settings2,
-  BarChart3,
-  LineChart as LineChartIcon,
-  AreaChart as AreaChartIcon,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Line, LineChart, Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import {
   Select,
   SelectContent,
@@ -21,598 +20,550 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Bar,
-  BarChart,
-  Line,
-  LineChart,
-  Area,
-  AreaChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { usePreferences } from '@/hooks/use-preferences'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 
-const METRICS_CONFIG = [
-  { id: 'admin', label: 'Administradoras Parceiras', icon: Building, color: 'text-blue-500' },
-  { id: 'condominios', label: 'Total de Condomínios', icon: Building2, color: 'text-indigo-500' },
-  { id: 'moradores', label: 'Total de Moradores', icon: Users, color: 'text-orange-500' },
-  { id: 'sindicos', label: 'Total de Síndicos', icon: ShieldCheck, color: 'text-purple-500' },
-  { id: 'receita', label: 'Receita Total', icon: TrendingUp, color: 'text-green-500' },
-  { id: 'despesa', label: 'Despesa Total', icon: TrendingDown, color: 'text-red-500' },
-  { id: 'lucro', label: 'Lucro Consolidado', icon: Wallet, color: 'text-emerald-500' },
+const revenueData = [
+  { month: 'Jan', revenue: 45000, expense: 32000 },
+  { month: 'Fev', revenue: 48000, expense: 33000 },
+  { month: 'Mar', revenue: 52000, expense: 31000 },
+  { month: 'Abr', revenue: 51000, expense: 35000 },
+  { month: 'Mai', revenue: 58000, expense: 34000 },
+  { month: 'Jun', revenue: 62000, expense: 36000 },
 ]
 
-const MOCK_DATA = {
-  admin: { value: '12', trend: '+2 esse mês' },
-  condominios: { value: '48', trend: '+5 esse mês' },
-  moradores: { value: '1.240', trend: '+120 esse mês' },
-  sindicos: { value: '36', trend: '+4 esse mês' },
-  receita: { value: 'R$ 485.000', trend: '+15% vs último período' },
-  despesa: { value: 'R$ 312.000', trend: '+5% vs último período' },
-  lucro: { value: 'R$ 173.000', trend: '+22% vs último período' },
-}
-
-const generateChartData = (period: string, specificMonth: string) => {
-  const data = []
-  let points = 0
-  let labelPrefix = ''
-
-  if (period === 'mes') {
-    const monthNames = [
-      'Jan',
-      'Fev',
-      'Mar',
-      'Abr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Set',
-      'Out',
-      'Nov',
-      'Dez',
-    ]
-    const mName = monthNames[parseInt(specificMonth)]
-    points = 4
-    for (let i = 1; i <= points; i++) {
-      data.push({
-        name: `Sem. ${i} (${mName})`,
-        receita: Math.round(120000 * (1 + (Math.random() * 0.4 - 0.1))),
-        despesa: Math.round(78000 * (1 + (Math.random() * 0.3 - 0.1))),
-      })
-    }
-    return data
-  }
-
-  switch (period) {
-    case 'trimestre':
-      points = 3
-      labelPrefix = 'Mês '
-      break
-    case 'semestre':
-      points = 6
-      labelPrefix = 'Mês '
-      break
-    case 'ano':
-      points = 12
-      labelPrefix = 'Mês '
-      break
-    case 'all':
-      points = 5
-      labelPrefix = 'Ano '
-      break
-    default:
-      points = 6
-      labelPrefix = 'Mês '
-      break
-  }
-
-  let baseReceita =
-    period === 'all'
-      ? 5000000
-      : period === 'ano'
-        ? 400000
-        : period === 'semestre'
-          ? 400000
-          : period === 'trimestre'
-            ? 400000
-            : 120000
-  let baseDespesa = baseReceita * 0.65
-
-  for (let i = 1; i <= points; i++) {
-    const rMulti = 1 + (Math.random() * 0.4 - 0.1)
-    const dMulti = 1 + (Math.random() * 0.3 - 0.1)
-
-    data.push({
-      name: `${labelPrefix}${period === 'all' ? 2020 + i : i}`,
-      receita: Math.round(baseReceita * rMulti),
-      despesa: Math.round(baseDespesa * dMulti),
-    })
-  }
-  return data
-}
-
 export function AdminOverview() {
-  const { visibleMetrics, setVisibleMetrics } = usePreferences()
-  const [period, setPeriod] = useState('semestre')
-  const [specificMonth, setSpecificMonth] = useState(new Date().getMonth().toString())
-  const [chartType, setChartType] = useState('bar')
+  const [stats, setStats] = useState({
+    condominios: 0,
+    administradoras: 0,
+    moradores: 0,
+    sindicos: 0,
+    receita: 0,
+    despesa: 0,
+    lucro: 0,
+  })
 
-  const [metricsData, setMetricsData] = useState(MOCK_DATA)
+  const [recentCondos, setRecentCondos] = useState<any[]>([])
+
+  const [period, setPeriod] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line')
   const [chartData, setChartData] = useState<any[]>([])
 
+  const defaultVisibleKpis = {
+    administradoras: true,
+    condominios: true,
+    sindicos: true,
+    moradores: true,
+    receita: true,
+    despesa: true,
+    lucro: true,
+  }
+
+  const [visibleKpis, setVisibleKpis] = useState(() => {
+    const saved = localStorage.getItem('acdomz-kpi-prefs')
+    return saved ? JSON.parse(saved) : defaultVisibleKpis
+  })
+
+  const handleKpiToggle = (key: keyof typeof visibleKpis) => {
+    const newPrefs = { ...visibleKpis, [key]: !visibleKpis[key] }
+    setVisibleKpis(newPrefs)
+    localStorage.setItem('acdomz-kpi-prefs', JSON.stringify(newPrefs))
+  }
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [
-          { count: adminCount },
-          { count: condominiosCount },
-          { count: moradoresCount },
-          { count: sindicosCount },
-        ] = await Promise.all([
-          supabase.from('administradoras').select('*', { count: 'exact', head: true }),
+    const loadData = async () => {
+      const now = new Date()
+      const year = now.getFullYear()
+      let start: Date | null = null
+      let end: Date | null = null
+      let monthsCount = 12
+
+      if (period === 'year') {
+        start = new Date(year, 0, 1)
+        end = new Date(year, 11, 31)
+      } else if (period === 'semester') {
+        const isFirst = now.getMonth() < 6
+        start = new Date(year, isFirst ? 0 : 6, 1)
+        end = new Date(year, isFirst ? 5 : 11, isFirst ? 30 : 31)
+        monthsCount = 6
+      } else if (period === 'quarter') {
+        const q = Math.floor(now.getMonth() / 3)
+        start = new Date(year, q * 3, 1)
+        end = new Date(year, q * 3 + 3, 0)
+        monthsCount = 3
+      } else if (period === 'month') {
+        start = new Date(year, selectedMonth - 1, 1)
+        end = new Date(year, selectedMonth, 0)
+        monthsCount = 1
+      }
+
+      let recQuery = supabase.from('receitas_acdomz').select('amount, date')
+      let despPtQuery = supabase.from('despesas_pontuais_acdomz').select('amount, date')
+
+      if (start && end) {
+        const startStr = start.toISOString().split('T')[0]
+        const endStr = end.toISOString().split('T')[0]
+        recQuery = recQuery.gte('date', startStr).lte('date', endStr)
+        despPtQuery = despPtQuery.gte('date', startStr).lte('date', endStr)
+      }
+
+      const [condos, admins, moradores, profiles, receitas, despesasPt, despesasRec, recent] =
+        await Promise.all([
           supabase.from('condominios').select('*', { count: 'exact', head: true }),
+          supabase.from('administradoras').select('*', { count: 'exact', head: true }),
           supabase.from('moradores').select('*', { count: 'exact', head: true }),
           supabase
             .from('profiles')
             .select('*', { count: 'exact', head: true })
             .eq('role', 'sindico'),
+          recQuery,
+          despPtQuery,
+          supabase.from('despesas_recorrentes_acdomz').select('amount'),
+          supabase
+            .from('condominios')
+            .select('id, name, total_units, sindia_active')
+            .order('created_at', { ascending: false })
+            .limit(5),
         ])
 
-        const { data: receitasData } = await supabase.from('receitas_acdomz').select('amount, date')
-        const { data: despesasPontuais } = await supabase
-          .from('despesas_pontuais_acdomz')
-          .select('amount, date')
-        const { data: despesasRecorrentes } = await supabase
-          .from('despesas_recorrentes_acdomz')
-          .select('amount, day_of_month')
+      const totalReceita =
+        receitas.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0
+      const totalDespesaPt =
+        despesasPt.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0
+      const totalDespesaRec =
+        despesasRec.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0
+      const totalDespesa = totalDespesaPt + totalDespesaRec * (period === 'all' ? 12 : monthsCount)
 
-        const now = new Date()
-        const year = now.getFullYear()
-        let start = new Date(0)
-        let end = new Date(year, 11, 31)
+      setStats({
+        condominios: condos.count || 0,
+        administradoras: admins.count || 0,
+        moradores: moradores.count || 0,
+        sindicos: profiles.count || 0,
+        receita: totalReceita,
+        despesa: totalDespesa,
+        lucro: totalReceita - totalDespesa,
+      })
 
-        if (period === 'mes') {
-          start = new Date(year, parseInt(specificMonth), 1)
-          end = new Date(year, parseInt(specificMonth) + 1, 0)
-        } else if (period === 'trimestre') {
-          start = new Date(year, now.getMonth() - 2, 1)
-          end = new Date(year, now.getMonth() + 1, 0)
-        } else if (period === 'semestre') {
-          start = new Date(year, now.getMonth() - 5, 1)
-          end = new Date(year, now.getMonth() + 1, 0)
-        } else if (period === 'ano') {
-          start = new Date(year, 0, 1)
-          end = new Date(year, 11, 31)
-        }
+      if (recent.data) setRecentCondos(recent.data)
 
-        const filteredReceitas = (receitasData || []).filter((r) => {
-          const d = new Date(r.date || '')
-          return d >= start && d <= end
-        })
-        const filteredDespesas = (despesasPontuais || []).filter((d) => {
-          const dt = new Date(d.date || '')
-          return dt >= start && dt <= end
-        })
+      const monthNames = [
+        'Jan',
+        'Fev',
+        'Mar',
+        'Abr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Set',
+        'Out',
+        'Nov',
+        'Dez',
+      ]
+      const dataByMonth: Record<string, { revenue: number; expense: number }> = {}
 
-        let monthsInPeriod = 1
-        if (period === 'trimestre') monthsInPeriod = 3
-        else if (period === 'semestre') monthsInPeriod = 6
-        else if (period === 'ano') monthsInPeriod = 12
-        else if (period === 'all') monthsInPeriod = (year - 2020 + 1) * 12
+      receitas.data?.forEach((r) => {
+        if (!r.date) return
+        const m = r.date.substring(0, 7)
+        if (!dataByMonth[m]) dataByMonth[m] = { revenue: 0, expense: 0 }
+        dataByMonth[m].revenue += Number(r.amount) || 0
+      })
 
-        const totalRecorrentes =
-          (despesasRecorrentes || []).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) *
-          monthsInPeriod
+      despesasPt.data?.forEach((d) => {
+        if (!d.date) return
+        const m = d.date.substring(0, 7)
+        if (!dataByMonth[m]) dataByMonth[m] = { revenue: 0, expense: 0 }
+        dataByMonth[m].expense += Number(d.amount) || 0
+      })
 
-        const totalReceitas = filteredReceitas.reduce(
-          (acc, curr) => acc + (Number(curr.amount) || 0),
-          0,
-        )
-        const totalDespesas =
-          filteredDespesas.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) +
-          totalRecorrentes
-        const lucro = totalReceitas - totalDespesas
+      Object.keys(dataByMonth).forEach((m) => {
+        dataByMonth[m].expense += totalDespesaRec
+      })
 
-        const formatCurrency = (val: number) =>
-          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+      let builtChartData = Object.keys(dataByMonth)
+        .sort()
+        .map((k) => ({
+          month: monthNames[parseInt(k.split('-')[1]) - 1],
+          revenue: dataByMonth[k].revenue,
+          expense: dataByMonth[k].expense,
+        }))
 
-        const hasRealData =
-          (adminCount || 0) > 0 || (condominiosCount || 0) > 0 || totalReceitas > 0
-
-        if (hasRealData) {
-          setMetricsData({
-            admin: { value: adminCount?.toString() || '0', trend: 'Total cadastrado' },
-            condominios: { value: condominiosCount?.toString() || '0', trend: 'Total cadastrado' },
-            moradores: { value: moradoresCount?.toString() || '0', trend: 'Total cadastrado' },
-            sindicos: { value: sindicosCount?.toString() || '0', trend: 'Total cadastrado' },
-            receita: {
-              value: formatCurrency(totalReceitas),
-              trend: period === 'all' ? 'Histórico completo' : 'No período',
-            },
-            despesa: {
-              value: formatCurrency(totalDespesas),
-              trend: period === 'all' ? 'Histórico completo' : 'No período',
-            },
-            lucro: {
-              value: formatCurrency(lucro),
-              trend: period === 'all' ? 'Histórico completo' : 'No período',
-            },
-          })
-        }
-
-        const newChartData = []
-        const monthNames = [
-          'Jan',
-          'Fev',
-          'Mar',
-          'Abr',
-          'Mai',
-          'Jun',
-          'Jul',
-          'Ago',
-          'Set',
-          'Out',
-          'Nov',
-          'Dez',
-        ]
-
-        if (period === 'mes') {
-          const weeks = [0, 0, 0, 0]
-          const weeksDespesas = [0, 0, 0, 0]
-          filteredReceitas.forEach((r) => {
-            const day = new Date(r.date || '').getDate()
-            const w = Math.min(Math.floor((day - 1) / 7), 3)
-            weeks[w] += Number(r.amount) || 0
-          })
-          filteredDespesas.forEach((d) => {
-            const day = new Date(d.date || '').getDate()
-            const w = Math.min(Math.floor((day - 1) / 7), 3)
-            weeksDespesas[w] += Number(d.amount) || 0
-          })
-          const recPerWeek = totalRecorrentes / 4
-          const mName = monthNames[parseInt(specificMonth)]
-          for (let i = 0; i < 4; i++) {
-            newChartData.push({
-              name: `Sem. ${i + 1} (${mName})`,
-              receita: weeks[i],
-              despesa: weeksDespesas[i] + recPerWeek,
-            })
-          }
-        } else if (['trimestre', 'semestre', 'ano'].includes(period)) {
-          const map = new Map<string, { receita: number; despesa: number }>()
-          const mCount = period === 'trimestre' ? 3 : period === 'semestre' ? 6 : 12
-          const startMonth = start.getMonth()
-          const startYear = start.getFullYear()
-          for (let i = 0; i < mCount; i++) {
-            const m = (startMonth + i) % 12
-            const y = startYear + Math.floor((startMonth + i) / 12)
-            map.set(`${y}-${m}`, { receita: 0, despesa: totalRecorrentes / monthsInPeriod })
-          }
-          filteredReceitas.forEach((r) => {
-            const d = new Date(r.date || '')
-            const key = `${d.getFullYear()}-${d.getMonth()}`
-            if (map.has(key)) map.get(key)!.receita += Number(r.amount) || 0
-          })
-          filteredDespesas.forEach((d) => {
-            const dDate = new Date(d.date || '')
-            const key = `${dDate.getFullYear()}-${dDate.getMonth()}`
-            if (map.has(key)) map.get(key)!.despesa += Number(d.amount) || 0
-          })
-          map.forEach((val, key) => {
-            const [y, m] = key.split('-')
-            newChartData.push({
-              name: `${monthNames[parseInt(m)]}/${y.slice(2)}`,
-              receita: val.receita,
-              despesa: val.despesa,
-            })
-          })
-        } else {
-          const map = new Map<string, { receita: number; despesa: number }>()
-          receitasData?.forEach((r) => {
-            const y = new Date(r.date || '').getFullYear().toString()
-            if (!map.has(y)) map.set(y, { receita: 0, despesa: 0 })
-            map.get(y)!.receita += Number(r.amount) || 0
-          })
-          despesasPontuais?.forEach((d) => {
-            const y = new Date(d.date || '').getFullYear().toString()
-            if (!map.has(y)) map.set(y, { receita: 0, despesa: 0 })
-            map.get(y)!.despesa += Number(d.amount) || 0
-          })
-          const yearlyRecorrente = totalRecorrentes / (monthsInPeriod / 12)
-          Array.from(map.keys())
-            .sort()
-            .forEach((y) => {
-              newChartData.push({
-                name: y,
-                receita: map.get(y)!.receita,
-                despesa: map.get(y)!.despesa + yearlyRecorrente,
-              })
-            })
-          if (newChartData.length === 0) {
-            newChartData.push({ name: year.toString(), receita: 0, despesa: 0 })
-          }
-        }
-
-        if (hasRealData && totalReceitas > 0) {
-          setChartData(newChartData)
-        } else {
-          setChartData(generateChartData(period, specificMonth))
-        }
-      } catch (err) {
-        console.error('Error fetching dashboard data', err)
+      if (builtChartData.length === 0) {
+        builtChartData = revenueData
       }
+
+      setChartData(builtChartData)
     }
+    loadData()
+  }, [period, selectedMonth])
 
-    fetchDashboardData()
-  }, [period, specificMonth])
-
-  const toggleMetric = (id: string) => {
-    if (visibleMetrics.includes(id)) {
-      if (visibleMetrics.length > 1) {
-        setVisibleMetrics(visibleMetrics.filter((m) => m !== id))
-      }
-    } else {
-      setVisibleMetrics([...visibleMetrics, id])
-    }
-  }
-
-  const chartConfig = {
-    receita: { label: 'Receita', color: 'hsl(var(--chart-1))' },
-    despesa: { label: 'Despesa', color: 'hsl(var(--chart-2))' },
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecione o período" />
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mes">Mês Específico</SelectItem>
-              <SelectItem value="trimestre">Último Trimestre</SelectItem>
-              <SelectItem value="semestre">Último Semestre</SelectItem>
-              <SelectItem value="ano">Último Ano</SelectItem>
-              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="all">Todo o Período</SelectItem>
+              <SelectItem value="year">Este Ano</SelectItem>
+              <SelectItem value="semester">Este Semestre</SelectItem>
+              <SelectItem value="quarter">Este Trimestre</SelectItem>
+              <SelectItem value="month">Mês Específico</SelectItem>
             </SelectContent>
           </Select>
 
-          {period === 'mes' && (
-            <Select value={specificMonth} onValueChange={setSpecificMonth}>
-              <SelectTrigger className="w-[150px]">
+          {period === 'month' && (
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(v) => setSelectedMonth(parseInt(v))}
+            >
+              <SelectTrigger className="w-[130px]">
                 <SelectValue placeholder="Mês" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Janeiro</SelectItem>
-                <SelectItem value="1">Fevereiro</SelectItem>
-                <SelectItem value="2">Março</SelectItem>
-                <SelectItem value="3">Abril</SelectItem>
-                <SelectItem value="4">Maio</SelectItem>
-                <SelectItem value="5">Junho</SelectItem>
-                <SelectItem value="6">Julho</SelectItem>
-                <SelectItem value="7">Agosto</SelectItem>
-                <SelectItem value="8">Setembro</SelectItem>
-                <SelectItem value="9">Outubro</SelectItem>
-                <SelectItem value="10">Novembro</SelectItem>
-                <SelectItem value="11">Dezembro</SelectItem>
+                <SelectItem value="1">Janeiro</SelectItem>
+                <SelectItem value="2">Fevereiro</SelectItem>
+                <SelectItem value="3">Março</SelectItem>
+                <SelectItem value="4">Abril</SelectItem>
+                <SelectItem value="5">Maio</SelectItem>
+                <SelectItem value="6">Junho</SelectItem>
+                <SelectItem value="7">Julho</SelectItem>
+                <SelectItem value="8">Agosto</SelectItem>
+                <SelectItem value="9">Setembro</SelectItem>
+                <SelectItem value="10">Outubro</SelectItem>
+                <SelectItem value="11">Novembro</SelectItem>
+                <SelectItem value="12">Dezembro</SelectItem>
               </SelectContent>
             </Select>
           )}
         </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <Settings2 className="w-4 h-4" />
-              Personalizar Métricas
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings2 className="h-4 w-4" /> Personalizar Métricas
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Métricas Visíveis</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {METRICS_CONFIG.map((metric) => (
-              <DropdownMenuCheckboxItem
-                key={metric.id}
-                checked={visibleMetrics.includes(metric.id)}
-                onCheckedChange={() => toggleMetric(metric.id)}
-              >
-                {metric.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Personalizar Dashboard</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione quais métricas deseja exibir no painel principal.
+              </p>
+              <div className="grid gap-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-admin"
+                    checked={visibleKpis.administradoras}
+                    onCheckedChange={() => handleKpiToggle('administradoras')}
+                  />
+                  <label
+                    htmlFor="kpi-admin"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Administradoras Parceiras
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-condo"
+                    checked={visibleKpis.condominios}
+                    onCheckedChange={() => handleKpiToggle('condominios')}
+                  />
+                  <label
+                    htmlFor="kpi-condo"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Total Condomínios
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-sindicos"
+                    checked={visibleKpis.sindicos}
+                    onCheckedChange={() => handleKpiToggle('sindicos')}
+                  />
+                  <label
+                    htmlFor="kpi-sindicos"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Total Síndicos
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-moradores"
+                    checked={visibleKpis.moradores}
+                    onCheckedChange={() => handleKpiToggle('moradores')}
+                  />
+                  <label
+                    htmlFor="kpi-moradores"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Total Moradores
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-receita"
+                    checked={visibleKpis.receita}
+                    onCheckedChange={() => handleKpiToggle('receita')}
+                  />
+                  <label
+                    htmlFor="kpi-receita"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Receita Consolidada
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-despesa"
+                    checked={visibleKpis.despesa}
+                    onCheckedChange={() => handleKpiToggle('despesa')}
+                  />
+                  <label
+                    htmlFor="kpi-despesa"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Despesa Consolidada
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-lucro"
+                    checked={visibleKpis.lucro}
+                    onCheckedChange={() => handleKpiToggle('lucro')}
+                  />
+                  <label
+                    htmlFor="kpi-lucro"
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    Lucro Líquido
+                  </label>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {METRICS_CONFIG.filter((m) => visibleMetrics.includes(m.id)).map((metric) => {
-          const Icon = metric.icon
-          const data = metricsData[metric.id as keyof typeof metricsData]
-
-          return (
-            <Card
-              key={metric.id}
-              className="shadow-sm hover:shadow-md transition-shadow duration-200"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {metric.label}
-                </CardTitle>
-                <div className={`p-2 rounded-lg bg-muted/50 ${metric.color}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{data.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{data.trend}</p>
-              </CardContent>
-            </Card>
-          )
-        })}
+        {visibleKpis.administradoras && (
+          <KpiCard
+            title="Administradoras Parceiras"
+            value={stats.administradoras.toString()}
+            icon={Briefcase}
+            trend="+1"
+          />
+        )}
+        {visibleKpis.condominios && (
+          <KpiCard
+            title="Total Condomínios"
+            value={stats.condominios.toString()}
+            icon={Building}
+            trend="+2"
+          />
+        )}
+        {visibleKpis.sindicos && (
+          <KpiCard
+            title="Total Síndicos"
+            value={stats.sindicos.toString()}
+            icon={UserCheck}
+            trend="+3"
+          />
+        )}
+        {visibleKpis.moradores && (
+          <KpiCard
+            title="Total Moradores"
+            value={stats.moradores.toString()}
+            icon={Users}
+            trend="+12"
+          />
+        )}
+        {visibleKpis.receita && (
+          <KpiCard
+            title="Receita Consolidada"
+            value={formatCurrency(stats.receita)}
+            icon={DollarSign}
+            trend="+8%"
+          />
+        )}
+        {visibleKpis.despesa && (
+          <KpiCard
+            title="Despesa Consolidada"
+            value={formatCurrency(stats.despesa)}
+            icon={TrendingDown}
+            trend="-3%"
+          />
+        )}
+        {visibleKpis.lucro && (
+          <KpiCard
+            title="Lucro Líquido"
+            value={formatCurrency(stats.lucro)}
+            icon={TrendingUp}
+            trend="+12%"
+          />
+        )}
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
+      <div className="grid gap-6 md:grid-cols-7">
+        <Card className="md:col-span-4 hover-lift">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Evolução Financeira</CardTitle>
-            <CardDescription>
-              Comparativo de receitas e despesas no período selecionado
-            </CardDescription>
-          </div>
-          <ToggleGroup
-            type="single"
-            value={chartType}
-            onValueChange={(v) => v && setChartType(v)}
-            className="bg-muted/50 p-1 rounded-lg"
-          >
-            <ToggleGroupItem value="bar" aria-label="Gráfico de Barras">
-              <BarChart3 className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="line" aria-label="Gráfico de Linha">
-              <LineChartIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="area" aria-label="Gráfico de Área">
-              <AreaChartIcon className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[350px] w-full">
-            {chartType === 'bar' && (
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `R$ ${value / 1000}k`}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend verticalAlign="top" height={36} />
-                <Bar
-                  dataKey="receita"
-                  fill="var(--color-receita)"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={50}
-                />
-                <Bar
-                  dataKey="despesa"
-                  fill="var(--color-despesa)"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={50}
-                />
-              </BarChart>
-            )}
-            {chartType === 'line' && (
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `R$ ${value / 1000}k`}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend verticalAlign="top" height={36} />
-                <Line
-                  type="monotone"
-                  dataKey="receita"
-                  stroke="var(--color-receita)"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="despesa"
-                  stroke="var(--color-despesa)"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            )}
-            {chartType === 'area' && (
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-receita)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-receita)" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorDespesa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-despesa)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-despesa)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `R$ ${value / 1000}k`}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend verticalAlign="top" height={36} />
-                <Area
-                  type="monotone"
-                  dataKey="receita"
-                  stroke="var(--color-receita)"
-                  fillOpacity={1}
-                  fill="url(#colorReceita)"
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="despesa"
-                  stroke="var(--color-despesa)"
-                  fillOpacity={1}
-                  fill="url(#colorDespesa)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            )}
-          </ChartContainer>
-        </CardContent>
-      </Card>
+            <Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
+              <SelectTrigger className="w-[120px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="line">Linhas</SelectItem>
+                <SelectItem value="bar">Barras</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ChartContainer
+              config={{
+                revenue: { label: 'Receitas', color: 'hsl(var(--chart-1))' },
+                expense: { label: 'Despesas', color: 'hsl(var(--chart-2))' },
+              }}
+              className="h-[300px]"
+            >
+              {chartType === 'line' ? (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(val) => `R$${val / 1000}k`}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="expense"
+                    stroke="var(--color-expense)"
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                </LineChart>
+              ) : (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis
+                    tickFormatter={(val) => `R$${val / 1000}k`}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              )}
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-3 hover-lift">
+          <CardHeader>
+            <CardTitle>Condomínios Recentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="text-right">Unidades</TableHead>
+                  <TableHead className="text-right">SINDIA</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentCondos.map((condo) => (
+                  <TableRow key={condo.id}>
+                    <TableCell className="font-medium">{condo.name}</TableCell>
+                    <TableCell className="text-right">{condo.total_units || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={condo.sindia_active ? 'default' : 'secondary'}>
+                        {condo.sindia_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {recentCondos.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center py-4 text-muted-foreground text-sm"
+                    >
+                      Nenhum condomínio cadastrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  )
+}
+
+function KpiCard({
+  title,
+  value,
+  icon: Icon,
+  trend,
+}: {
+  title: string
+  value: string
+  icon: any
+  trend: string
+}) {
+  const isPositive = trend.startsWith('+')
+  return (
+    <Card className="hover-lift">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-secondary" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-primary">{value}</div>
+        <p className={`text-xs mt-1 font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+          {trend} no período
+        </p>
+      </CardContent>
+    </Card>
   )
 }
