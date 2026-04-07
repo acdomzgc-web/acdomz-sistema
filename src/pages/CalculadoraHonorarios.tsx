@@ -31,6 +31,7 @@ import {
   formatCurrency,
   FaixasLotesTable,
   DensidadeTable,
+  SMN,
 } from '@/components/calculadora/utils'
 import {
   Table,
@@ -51,10 +52,10 @@ const FAIXAS_VERTICAL = [
 ]
 
 const DENSIDADES_VERTICAL = [
-  { id: 'starter', name: 'STARTER (≤80m²)', multiplier: 1.0, teto_por_lote: 0 },
-  { id: 'medium', name: 'MEDIUM (81-120m²)', multiplier: 1.05, teto_por_lote: 0 },
-  { id: 'premium', name: 'PREMIUM (121-200m²)', multiplier: 1.15, teto_por_lote: 0 },
-  { id: 'exclusive', name: 'EXCLUSIVE (>200m²)', multiplier: 1.3, teto_por_lote: 0 },
+  { id: 'starter', name: 'STARTER (≤80m²)', multiplier: 1.0, teto_por_lote: 0.05 * SMN },
+  { id: 'medium', name: 'MEDIUM (81-120m²)', multiplier: 1.05, teto_por_lote: 0.05 * SMN },
+  { id: 'premium', name: 'PREMIUM (121-200m²)', multiplier: 1.15, teto_por_lote: 0.1 * SMN },
+  { id: 'exclusive', name: 'EXCLUSIVE (>200m²)', multiplier: 1.3, teto_por_lote: 0.1 * SMN },
 ]
 
 const calcularUnidadesVertical = (qtd: number) => {
@@ -114,6 +115,7 @@ const DensidadeVerticalTableLocal = () => (
           <TableRow>
             <TableHead>Categoria</TableHead>
             <TableHead className="text-right">Multiplicador</TableHead>
+            <TableHead className="text-right">Teto/Unid.</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,6 +124,9 @@ const DensidadeVerticalTableLocal = () => (
               <TableCell className="font-medium">{d.name}</TableCell>
               <TableCell className="text-right text-muted-foreground">
                 {d.multiplier.toFixed(2)}x
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {formatCurrency(d.teto_por_lote)}
               </TableCell>
             </TableRow>
           ))}
