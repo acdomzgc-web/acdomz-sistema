@@ -38,6 +38,7 @@ export default function Condominios() {
   const [open, setOpen] = useState(false)
   const [editingCondo, setEditingCondo] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [formTipo, setFormTipo] = useState<string>('horizontal')
   const { toast } = useToast()
 
   const loadData = async () => {
@@ -76,7 +77,7 @@ export default function Condominios() {
       sindico_id: (formData.get('sindico_id') as string) || null,
       calc_densidade_id: (formData.get('calc_densidade_id') as string) || 'medium',
       calc_areas_comuns: parseInt(formData.get('calc_areas_comuns') as string) || 0,
-      tipo: (formData.get('tipo') as string) || 'horizontal',
+      tipo: formTipo,
       ocupacao: (formData.get('ocupacao') as string) || 'residencial',
     }
 
@@ -135,12 +136,24 @@ export default function Condominios() {
       c.cnpj?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const handleOpenEdit = (condo: any) => {
+    setEditingCondo(condo)
+    setFormTipo(condo?.tipo || 'horizontal')
+    setOpen(true)
+  }
+
+  const handleOpenNew = () => {
+    setEditingCondo(null)
+    setFormTipo('horizontal')
+    setOpen(true)
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Condomínios</h1>
-          <p className="text-muted-foreground">Gestão do portfólio de propriedades.</p>
+          <p className="text-muted-foreground">Gestão do portfólio de propriedades e parâmetros.</p>
         </div>
         <Dialog
           open={open}
@@ -150,11 +163,11 @@ export default function Condominios() {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => setEditingCondo(null)}>
+            <Button className="gap-2" onClick={handleOpenNew}>
               <Plus className="h-4 w-4" /> Novo Condomínio
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[650px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-secondary" />{' '}
@@ -162,13 +175,15 @@ export default function Condominios() {
               </DialogTitle>
             </DialogHeader>
             <form key={editingCondo?.id || 'new'} onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+              <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-1">
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-primary border-b pb-1">
                     Informações Básicas
                   </h3>
                   <div className="grid gap-2">
-                    <Label htmlFor="c-name">Nome do Condomínio</Label>
+                    <Label htmlFor="c-name">
+                      Nome do Condomínio <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="c-name"
                       name="name"
@@ -177,7 +192,7 @@ export default function Condominios() {
                       placeholder="Ex: Residencial Alpha"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="c-cnpj">CNPJ</Label>
                       <Input
@@ -188,35 +203,33 @@ export default function Condominios() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="c-units">Total de Unidades</Label>
+                      <Label htmlFor="c-address">Endereço Completo</Label>
                       <Input
-                        id="c-units"
-                        name="units"
-                        type="number"
-                        defaultValue={editingCondo?.total_units}
-                        placeholder="Ex: 120"
+                        id="c-address"
+                        name="address"
+                        defaultValue={editingCondo?.address}
+                        placeholder="Rua, Número, Bairro, Cidade - UF"
                       />
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="c-address">Endereço Completo</Label>
-                    <Input
-                      id="c-address"
-                      name="address"
-                      defaultValue={editingCondo?.address}
-                      placeholder="Rua, Número, Bairro, Cidade - UF"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                </div>
+
+                <div className="space-y-4 mt-2">
+                  <h3 className="text-sm font-semibold text-primary border-b pb-1">
+                    Tipologia e Características (Cálculo)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="grid gap-2">
-                      <Label>Tipo de Condomínio</Label>
-                      <Select name="tipo" defaultValue={editingCondo?.tipo || 'horizontal'}>
+                      <Label>
+                        Tipo <span className="text-destructive">*</span>
+                      </Label>
+                      <Select value={formTipo} onValueChange={setFormTipo} required>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="horizontal">Horizontal (Lotes)</SelectItem>
-                          <SelectItem value="vertical">Vertical (Unidades)</SelectItem>
+                          <SelectItem value="vertical">Vertical (Torres/Unidades)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -236,52 +249,31 @@ export default function Condominios() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="c-units">
+                        {formTipo === 'vertical' ? 'Qtd. de Unidades' : 'Qtd. de Lotes'}{' '}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="c-units"
+                        name="units"
+                        type="number"
+                        required
+                        min="1"
+                        defaultValue={editingCondo?.total_units}
+                        placeholder="Ex: 120"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-4 mt-2">
                   <h3 className="text-sm font-semibold text-primary border-b pb-1">
-                    Relacionamentos
+                    Parâmetros Específicos (Calculadora de Honorários)
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label>Administradora</Label>
-                      <Select name="admin_id" defaultValue={editingCondo?.admin_id || ''}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {admins.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Síndico Atual</Label>
-                      <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || ''}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {profiles.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <h3 className="text-sm font-semibold text-primary border-b pb-1 mt-4">
-                    Parâmetros - Calculadora de Honorários
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label>Densidade (Metragem Média)</Label>
+                      <Label>Trilha de Densidade (Metragem Média)</Label>
                       <Select
                         name="calc_densidade_id"
                         defaultValue={editingCondo?.calc_densidade_id || 'medium'}
@@ -298,7 +290,7 @@ export default function Condominios() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Áreas Comuns (Qtd. Espaços)</Label>
+                      <Label>Áreas Comuns (Qtd. Espaços/Lazer)</Label>
                       <Input
                         name="calc_areas_comuns"
                         type="number"
@@ -308,8 +300,48 @@ export default function Condominios() {
                     </div>
                   </div>
                 </div>
+
+                <div className="space-y-4 mt-2">
+                  <h3 className="text-sm font-semibold text-primary border-b pb-1">
+                    Relacionamentos Administrativos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Administradora Parceira</Label>
+                      <Select name="admin_id" defaultValue={editingCondo?.admin_id || ''}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nenhuma" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nenhuma</SelectItem>
+                          {admins.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Síndico Atual</Label>
+                      <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || ''}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nenhum</SelectItem>
+                          {profiles.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="mt-4 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
@@ -337,11 +369,11 @@ export default function Condominios() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>Condomínio</TableHead>
+                <TableHead>Condomínio / Endereço</TableHead>
                 <TableHead>Administradora</TableHead>
                 <TableHead>Síndico</TableHead>
                 <TableHead className="text-center">Tipo</TableHead>
-                <TableHead className="text-center">Unidades/Lotes</TableHead>
+                <TableHead className="text-center">Tamanho</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -350,14 +382,16 @@ export default function Condominios() {
                 <TableRow key={condo.id} className="hover:bg-muted/30">
                   <TableCell>
                     <div className="font-medium text-primary">{condo.name}</div>
-                    <div className="text-xs text-muted-foreground">{condo.address}</div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {condo.address || 'S/ Endereço'}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-background">
+                    <Badge variant="outline" className="bg-background font-normal">
                       {condo.administradoras?.name || 'N/A'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground text-sm">
                     {condo.profiles?.name || '-'}
                   </TableCell>
                   <TableCell className="text-center">
@@ -365,16 +399,18 @@ export default function Condominios() {
                       {condo.tipo || 'Horizontal'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center font-medium">{condo.total_units}</TableCell>
+                  <TableCell className="text-center font-medium">
+                    {condo.total_units}{' '}
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {condo.tipo === 'vertical' ? 'un' : 'lts'}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                          setEditingCondo(condo)
-                          setOpen(true)
-                        }}
+                        onClick={() => handleOpenEdit(condo)}
                         className="h-8 w-8 text-secondary hover:text-secondary-foreground hover:bg-secondary/20"
                       >
                         <Edit className="h-4 w-4" />
@@ -393,7 +429,7 @@ export default function Condominios() {
               ))}
               {filteredCondos.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                     Nenhum condomínio encontrado.
                   </TableCell>
                 </TableRow>

@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react'
-import { FileText, Building, Users, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { Building, MapPin, Hash, FileText, Briefcase, ExternalLink, Map } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import {
-  Bar,
-  BarChart,
-  Line,
-  LineChart,
-  Area,
-  AreaChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts'
 import {
   Select,
   SelectContent,
@@ -21,23 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 export function SpecificOverview() {
   const [condominios, setCondominios] = useState<any[]>([])
   const [selectedCondo, setSelectedCondo] = useState<string>('')
-  const [period, setPeriod] = useState<string>('all')
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
-  const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar')
-
-  const [summary, setSummary] = useState({
-    docsCount: 0,
-    adminName: '-',
-    sindicoName: '-',
-    receita: 0,
-    despesa: 0,
-  })
-  const [chartData, setChartData] = useState<any[]>([])
+  const [condoDetails, setCondoDetails] = useState<any>(null)
 
   useEffect(() => {
     supabase
@@ -56,122 +34,27 @@ export function SpecificOverview() {
     if (!selectedCondo) return
 
     const loadData = async () => {
-      const now = new Date()
-      const year = now.getFullYear()
-      let start: Date | null = null
-      let end: Date | null = null
-
-      if (period === 'year') {
-        start = new Date(year, 0, 1)
-        end = new Date(year, 11, 31)
-      } else if (period === 'semester') {
-        const isFirst = now.getMonth() < 6
-        start = new Date(year, isFirst ? 0 : 6, 1)
-        end = new Date(year, isFirst ? 5 : 11, isFirst ? 30 : 31)
-      } else if (period === 'quarter') {
-        const q = Math.floor(now.getMonth() / 3)
-        start = new Date(year, q * 3, 1)
-        end = new Date(year, q * 3 + 3, 0)
-      } else if (period === 'month') {
-        start = new Date(year, selectedMonth - 1, 1)
-        end = new Date(year, selectedMonth, 0)
-      }
-
       const { data: condoData } = await supabase
         .from('condominios')
         .select(`
-          id,
+          *,
           administradoras ( name ),
-          sindico_id
+          profiles:sindico_id ( name )
         `)
         .eq('id', selectedCondo)
         .single()
 
-      let sindicoName = 'Não atribuído'
-      if (condoData?.sindico_id) {
-        const { data: p } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', condoData.sindico_id)
-          .single()
-        if (p) sindicoName = p.name
-      }
-
-      const { count: docsCount } = await supabase
-        .from('documentos_condominio')
-        .select('*', { count: 'exact', head: true })
-        .eq('condominio_id', selectedCondo)
-
-      let finQuery = supabase
-        .from('financeiro_condominio')
-        .select('amount, type, date')
-        .eq('condominio_id', selectedCondo)
-
-      if (start && end) {
-        finQuery = finQuery
-          .gte('date', start.toISOString().split('T')[0])
-          .lte('date', end.toISOString().split('T')[0])
-      }
-
-      const { data: finData } = await finQuery
-
-      let receita = 0
-      let despesa = 0
-      const dataByMonth: Record<string, { in: number; out: number }> = {}
-
-      finData?.forEach((f) => {
-        const val = Number(f.amount) || 0
-        if (f.type === 'receita') receita += val
-        else despesa += val
-
-        if (f.date) {
-          const m = f.date.substring(0, 7)
-          if (!dataByMonth[m]) dataByMonth[m] = { in: 0, out: 0 }
-          if (f.type === 'receita') dataByMonth[m].in += val
-          else dataByMonth[m].out += val
-        }
-      })
-
-      setSummary({
-        docsCount: docsCount || 0,
-        adminName: condoData?.administradoras?.name || 'Não atribuída',
-        sindicoName,
-        receita,
-        despesa,
-      })
-
-      const monthNames = [
-        'Jan',
-        'Fev',
-        'Mar',
-        'Abr',
-        'Mai',
-        'Jun',
-        'Jul',
-        'Ago',
-        'Set',
-        'Out',
-        'Nov',
-        'Dez',
-      ]
-      const builtChartData = Object.keys(dataByMonth)
-        .sort()
-        .map((k) => ({
-          month: monthNames[parseInt(k.split('-')[1]) - 1],
-          in: dataByMonth[k].in,
-          out: dataByMonth[k].out,
-        }))
-
-      setChartData(
-        builtChartData.length > 0 ? builtChartData : [{ month: 'Sem dados', in: 0, out: 0 }],
-      )
+      setCondoDetails(condoData)
     }
 
     loadData()
-  }, [selectedCondo, period, selectedMonth])
+  }, [selectedCondo])
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+  if (!condoDetails) return null
+
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    condoDetails.address || condoDetails.name,
+  )}`
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -196,214 +79,115 @@ export function SpecificOverview() {
             </Select>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[160px] bg-background shadow-sm">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo o Período</SelectItem>
-              <SelectItem value="year">Anual</SelectItem>
-              <SelectItem value="semester">Semestral</SelectItem>
-              <SelectItem value="quarter">Trimestral</SelectItem>
-              <SelectItem value="month">Mensal</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {period === 'month' && (
-            <Select
-              value={selectedMonth.toString()}
-              onValueChange={(v) => setSelectedMonth(parseInt(v))}
-            >
-              <SelectTrigger className="w-[140px] bg-background shadow-sm">
-                <SelectValue placeholder="Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <SelectItem key={m} value={m.toString()}>
-                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="bg-background">
+            {condoDetails.tipo === 'vertical' ? 'Vertical' : 'Horizontal'}
+          </Badge>
+          <Badge variant="secondary" className="capitalize">
+            {condoDetails.ocupacao || 'Não definido'}
+          </Badge>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary hover:shadow-md transition-all group cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documentos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <CardTitle className="text-sm font-medium">Quantidade</CardTitle>
+            <Hash className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.docsCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Arquivos registrados</p>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-secondary hover:shadow-md transition-all group cursor-default">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Liderança</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground group-hover:text-secondary transition-colors" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-bold truncate" title={summary.sindicoName}>
-              {summary.sindicoName}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1 truncate" title={summary.adminName}>
-              {summary.adminName}
+            <div className="text-2xl font-bold">{condoDetails.total_units || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {condoDetails.tipo === 'vertical' ? 'Unidades' : 'Lotes'} registrados
             </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-all group cursor-default">
+
+        <Card className="border-l-4 border-l-secondary hover:shadow-md transition-all group cursor-default">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receitas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground group-hover:text-green-500 transition-colors" />
+            <CardTitle className="text-sm font-medium">CNPJ</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground group-hover:text-secondary transition-colors" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(summary.receita)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">No período selecionado</p>
+            <div className="text-sm font-bold mt-1">{condoDetails.cnpj || 'Não informado'}</div>
+            <p className="text-xs text-muted-foreground mt-2">Cadastro Nacional</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-all group cursor-default">
+
+        <Card className="border-l-4 border-l-accent hover:shadow-md transition-all group cursor-default md:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground group-hover:text-red-500 transition-colors" />
+            <CardTitle className="text-sm font-medium">Gestão Atual</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.despesa)}</div>
-            <p className="text-xs text-muted-foreground mt-1">No período selecionado</p>
+          <CardContent className="flex flex-col sm:flex-row gap-4 justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Administradora</p>
+              <p
+                className="text-sm font-bold truncate mt-1"
+                title={condoDetails.administradoras?.name}
+              >
+                {condoDetails.administradoras?.name || 'Não atribuída'}
+              </p>
+            </div>
+            <div className="hidden sm:block w-px bg-border my-1" />
+            <div>
+              <p className="text-xs text-muted-foreground">Síndico</p>
+              <p className="text-sm font-bold truncate mt-1" title={condoDetails.profiles?.name}>
+                {condoDetails.profiles?.name || 'Não atribuído'}
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-border/40 shadow-sm hover:shadow-md transition-all bg-gradient-to-b from-card to-card/50">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-border/40 bg-card/50">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" /> Análise Financeira
-          </CardTitle>
-          <Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
-            <SelectTrigger className="w-[160px] h-8 text-xs bg-background shadow-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="bar">Barras (Comparativo)</SelectItem>
-              <SelectItem value="line">Linhas (Tendência)</SelectItem>
-              <SelectItem value="area">Área (Evolução)</SelectItem>
-            </SelectContent>
-          </Select>
+      <Card className="border-border/40 shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/20 border-b flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" /> Localização do Condomínio
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {condoDetails.address || 'Endereço não cadastrado'}
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+              Abrir no Maps <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
         </CardHeader>
-        <CardContent className="pt-6 pl-2">
-          <ChartContainer
-            config={{
-              in: { label: 'Receitas', color: 'hsl(var(--chart-3))' },
-              out: { label: 'Despesas', color: 'hsl(var(--chart-5))' },
-            }}
-            className="h-[350px] w-full"
-          >
-            {chartType === 'bar' ? (
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  tickFormatter={(val) => `R$${val / 1000}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dx={-10}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="in" fill="var(--color-in)" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                <Bar dataKey="out" fill="var(--color-out)" radius={[4, 4, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            ) : chartType === 'line' ? (
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  tickFormatter={(val) => `R$${val / 1000}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dx={-10}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="in"
-                  stroke="var(--color-in)"
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="out"
-                  stroke="var(--color-out)"
-                  strokeWidth={3}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            ) : (
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-in)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-in)" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-out)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-out)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  tickFormatter={(val) => `R$${val / 1000}k`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                  dx={-10}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="in"
-                  stroke="var(--color-in)"
-                  fill="url(#colorIn)"
-                  strokeWidth={3}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="out"
-                  stroke="var(--color-out)"
-                  fill="url(#colorOut)"
-                  strokeWidth={3}
-                />
-              </AreaChart>
-            )}
-          </ChartContainer>
+        <CardContent className="p-0">
+          <div className="h-[400px] w-full bg-muted relative flex flex-col items-center justify-center">
+            {condoDetails.address ? (
+              <iframe
+                title="Google Maps"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(
+                  'NO_API_KEY', // Em um ambiente real, usaria uma API Key aqui, mas sem ela, podemos usar um placeholder visual.
+                )}&q=${encodeURIComponent(condoDetails.address)}`}
+                className="absolute inset-0 grayscale contrast-125 opacity-80 mix-blend-multiply dark:mix-blend-lighten pointer-events-none"
+              ></iframe>
+            ) : null}
+
+            <div className="z-10 flex flex-col items-center justify-center p-6 bg-background/80 backdrop-blur-sm rounded-xl border shadow-lg text-center max-w-md mx-auto">
+              <Map className="h-12 w-12 text-primary mb-4 opacity-80" />
+              <h3 className="font-semibold text-lg mb-2">Visão do Mapa</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {condoDetails.address
+                  ? 'Para interagir com o mapa e ver rotas detalhadas, acesse diretamente o Google Maps.'
+                  : 'Cadastre um endereço válido nas configurações do condomínio para visualizar o mapa.'}
+              </p>
+              <Button asChild className="w-full">
+                <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                  Visualizar no Google Maps
+                </a>
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
