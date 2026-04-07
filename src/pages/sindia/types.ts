@@ -3,6 +3,10 @@ export type Condominio = {
   name: string
   sindia_active: boolean
   sindia_prompt: string | null
+  use_global_sindia_config: boolean
+  sindia_tone: string | null
+  sindia_response_length: string | null
+  sindia_delay_seconds: number | null
 }
 
 export type Conversa = {
@@ -14,5 +18,7 @@ export type Conversa = {
   is_unauthorized: boolean
   manual_reply: string | null
   user_id: string | null
-  profiles: { name: string } | null
+  phone?: string | null
+  condominio_id?: string | null
+  profiles: { name: string; foto_url?: string | null } | null
 }

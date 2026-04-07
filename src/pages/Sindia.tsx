@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -18,23 +17,31 @@ import { ConfigTab } from './sindia/ConfigTab'
 export default function Sindia() {
   const { toast } = useToast()
   const [condominios, setCondominios] = useState<Condominio[]>([])
+  const [globalConfig, setGlobalConfig] = useState<any>(null)
   const [selectedId, setSelectedId] = useState<string>('all')
   const [conversas, setConversas] = useState<Conversa[]>([])
   const [loading, setLoading] = useState(true)
-  const [startDate, setStartDate] = useState<string>(format(subDays(new Date(), 30), 'yyyy-MM-dd'))
-  const [endDate, setEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
 
   useEffect(() => {
     fetchCondominios()
+    fetchGlobalConfig()
   }, [])
+
   useEffect(() => {
     fetchConversas()
-  }, [selectedId, startDate, endDate])
+  }, [selectedId])
+
+  const fetchGlobalConfig = async () => {
+    const { data } = await supabase.from('sindia_configuracoes_globais').select('*').single()
+    if (data) setGlobalConfig(data)
+  }
 
   const fetchCondominios = async () => {
     const { data } = await supabase
       .from('condominios')
-      .select('id, name, sindia_active, sindia_prompt')
+      .select(
+        'id, name, sindia_active, sindia_prompt, use_global_sindia_config, sindia_tone, sindia_response_length, sindia_delay_seconds',
+      )
       .order('name')
     if (data) setCondominios(data)
   }
@@ -45,12 +52,13 @@ export default function Sindia() {
       let query = supabase
         .from('conversas_sindia')
         .select(
-          `id, created_at, message, response, status, is_unauthorized, manual_reply, user_id, profiles (name)`,
+          `id, created_at, message, response, status, is_unauthorized, manual_reply, user_id, phone, condominio_id, profiles (name, foto_url)`,
         )
         .order('created_at', { ascending: false })
+        .limit(1000)
+
       if (selectedId !== 'all') query = query.eq('condominio_id', selectedId)
-      if (startDate) query = query.gte('created_at', startOfDay(parseISO(startDate)).toISOString())
-      if (endDate) query = query.lte('created_at', endOfDay(parseISO(endDate)).toISOString())
+
       const { data, error } = await query
       if (error) throw error
       setConversas(data as unknown as Conversa[])
@@ -69,7 +77,7 @@ export default function Sindia() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">SINDIA Bot</h2>
           <p className="text-muted-foreground">
-            Gerencie a assistente virtual, personalize seu comportamento e acompanhe atendimentos.
+            Central de atendimento inteligente e configurações do bot de WhatsApp.
           </p>
         </div>
         <Select value={selectedId} onValueChange={setSelectedId}>
@@ -77,7 +85,7 @@ export default function Sindia() {
             <SelectValue placeholder="Selecione o Condomínio" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os Condomínios</SelectItem>
+            <SelectItem value="all">Todos (Visão Global)</SelectItem>
             {condominios.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -87,31 +95,32 @@ export default function Sindia() {
         </Select>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
+      <Tabs defaultValue="conversas" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="conversas">Conversas e Histórico</TabsTrigger>
           <TabsTrigger value="configuracoes">Configurações do Bot</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard Analítico</TabsTrigger>
         </TabsList>
-        <TabsContent value="dashboard">
-          <DashboardTab conversas={conversas} />
-        </TabsContent>
-        <TabsContent value="conversas">
+
+        <TabsContent value="conversas" className="m-0">
           <ConversasTab
             conversas={conversas}
             loading={loading}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            onUpdate={(c) => setConversas((prev) => prev.map((p) => (p.id === c.id ? c : p)))}
+            onAddConversa={(c) => setConversas((prev) => [c, ...prev])}
           />
         </TabsContent>
+
         <TabsContent value="configuracoes">
           <ConfigTab
             condominio={selectedCondominio}
+            globalConfig={globalConfig}
             onUpdate={(c) => setCondominios((prev) => prev.map((p) => (p.id === c.id ? c : p)))}
+            onUpdateGlobal={setGlobalConfig}
           />
+        </TabsContent>
+
+        <TabsContent value="dashboard">
+          <DashboardTab conversas={conversas} />
         </TabsContent>
       </Tabs>
     </div>
