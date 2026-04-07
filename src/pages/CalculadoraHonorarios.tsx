@@ -32,6 +32,104 @@ import {
   FaixasLotesTable,
   DensidadeTable,
 } from '@/components/calculadora/utils'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+const FAIXAS_VERTICAL = [
+  { min: 1, max: 50, valor: 81.05 },
+  { min: 51, max: 100, valor: 64.84 },
+  { min: 101, max: 150, valor: 48.63 },
+  { min: 151, max: 200, valor: 32.42 },
+  { min: 201, max: 250, valor: 16.21 },
+  { min: 251, max: Infinity, valor: 8.11 },
+]
+
+const DENSIDADES_VERTICAL = [
+  { id: 'starter', name: 'STARTER (≤80m²)', multiplier: 1.0, teto_por_lote: 0 },
+  { id: 'medium', name: 'MEDIUM (81-120m²)', multiplier: 1.05, teto_por_lote: 0 },
+  { id: 'premium', name: 'PREMIUM (121-200m²)', multiplier: 1.15, teto_por_lote: 0 },
+  { id: 'exclusive', name: 'EXCLUSIVE (>200m²)', multiplier: 1.3, teto_por_lote: 0 },
+]
+
+const calcularUnidadesVertical = (qtd: number) => {
+  let total = 0
+  let restante = qtd
+  for (const faixa of FAIXAS_VERTICAL) {
+    const maxNaFaixa = faixa.max === Infinity ? Infinity : faixa.max - faixa.min + 1
+    const numNaFaixa = Math.min(restante, maxNaFaixa)
+    if (numNaFaixa > 0) {
+      total += numNaFaixa * faixa.valor
+      restante -= numNaFaixa
+    }
+    if (restante <= 0) break
+  }
+  return total
+}
+
+const FaixasUnidadesTableVertical = () => (
+  <Card className="shadow-sm border-primary/10">
+    <CardHeader className="pb-3 bg-muted/20 border-b">
+      <CardTitle className="text-sm">Escala Variável (Vertical)</CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Faixa (Unidades)</TableHead>
+            <TableHead className="text-right">Valor/Unid.</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {FAIXAS_VERTICAL.map((f, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium">
+                {f.min}
+                {f.max === Infinity ? '+' : ` a ${f.max}`}
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {formatCurrency(f.valor)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
+)
+
+const DensidadeVerticalTableLocal = () => (
+  <Card className="shadow-sm border-primary/10">
+    <CardHeader className="pb-3 bg-muted/20 border-b">
+      <CardTitle className="text-sm">Densidade (Vertical)</CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Categoria</TableHead>
+            <TableHead className="text-right">Multiplicador</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {DENSIDADES_VERTICAL.map((d, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium">{d.name}</TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {d.multiplier.toFixed(2)}x
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
+)
 
 export default function CalculadoraHonorarios() {
   const { toast } = useToast()
@@ -67,18 +165,21 @@ export default function CalculadoraHonorarios() {
   }, [isAuto, selectedCondominioId, condominios])
 
   const calc = useMemo(() => {
-    const densidade = DENSIDADES.find((x) => x.id === densidadeId) || DENSIDADES[1]
+    const isVertical = tipoCondo === 'vertical'
+    const densidades = isVertical ? DENSIDADES_VERTICAL : DENSIDADES
+    const densidade = densidades.find((x) => x.id === densidadeId) || densidades[1]
 
-    // Modificações específicas para vertical baseadas na lógica pré-existente e instruções
-    const verticalModifier = tipoCondo === 'vertical' ? 0.85 : 1.0
-    const baseValueMod = tipoCondo === 'vertical' ? BASE_VALUE * 1.1 : BASE_VALUE // Exemplo de variação
-
-    const variavelLotes = calcularLotes(lotes || 0) * verticalModifier
+    const baseValueMod = BASE_VALUE
+    const variavelLotes = isVertical
+      ? calcularUnidadesVertical(lotes || 0)
+      : calcularLotes(lotes || 0)
     const valorAreasComuns = (areasComuns || 0) * VALOR_AREA_COMUM
+
     const subtotal = baseValueMod + variavelLotes + valorAreasComuns
     const honorarioTecnico = subtotal * densidade.multiplier
 
-    const teto_total = (lotes || 0) * densidade.teto_por_lote
+    const teto_por_lote = densidade.teto_por_lote || 0
+    const teto_total = (lotes || 0) * teto_por_lote
     const limitadoTeto = teto_total > 0 ? Math.min(honorarioTecnico, teto_total) : honorarioTecnico
     const honorarioFinal = Math.max(baseValueMod, limitadoTeto)
 
@@ -94,6 +195,8 @@ export default function CalculadoraHonorarios() {
       baseValueMod,
     }
   }, [lotes, densidadeId, areasComuns, tipoCondo])
+
+  const densidadesAtuais = tipoCondo === 'vertical' ? DENSIDADES_VERTICAL : DENSIDADES
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -236,7 +339,7 @@ export default function CalculadoraHonorarios() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {DENSIDADES.map((d) => (
+                        {densidadesAtuais.map((d) => (
                           <SelectItem key={d.id} value={d.id}>
                             {d.name}
                           </SelectItem>
@@ -274,8 +377,17 @@ export default function CalculadoraHonorarios() {
             </Card>
 
             <div className="grid grid-cols-2 gap-4">
-              <FaixasLotesTable />
-              <DensidadeTable />
+              {tipoCondo === 'vertical' ? (
+                <>
+                  <FaixasUnidadesTableVertical />
+                  <DensidadeVerticalTableLocal />
+                </>
+              ) : (
+                <>
+                  <FaixasLotesTable />
+                  <DensidadeTable />
+                </>
+              )}
             </div>
           </div>
 
@@ -347,7 +459,9 @@ export default function CalculadoraHonorarios() {
                   </h4>
                   <div className="flex justify-between items-center text-sm text-amber-900/80 dark:text-amber-500/80">
                     <span>Limite da Trilha ({calc.densidade.name}):</span>
-                    <span className="font-mono font-medium">{formatCurrency(calc.teto_total)}</span>
+                    <span className="font-mono font-medium">
+                      {calc.teto_total > 0 ? formatCurrency(calc.teto_total) : 'Sem Teto'}
+                    </span>
                   </div>
                   {calc.honorarioTecnico > calc.teto_total && calc.teto_total > 0 && (
                     <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">

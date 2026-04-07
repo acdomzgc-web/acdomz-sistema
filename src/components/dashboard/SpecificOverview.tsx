@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Building, MapPin, Hash, FileText, Briefcase, ExternalLink, Map } from 'lucide-react'
+import {
+  Building,
+  MapPin,
+  Hash,
+  FileText,
+  Briefcase,
+  ExternalLink,
+  Map,
+  Trees,
+  Maximize,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -55,6 +65,36 @@ export function SpecificOverview() {
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     condoDetails.address || condoDetails.name,
   )}`
+
+  const getDensityName = (id: string, tipo: string) => {
+    if (tipo === 'vertical') {
+      switch (id) {
+        case 'starter':
+          return 'STARTER (≤80m²)'
+        case 'medium':
+          return 'MEDIUM (81-120m²)'
+        case 'premium':
+          return 'PREMIUM (121-200m²)'
+        case 'exclusive':
+          return 'EXCLUSIVE (>200m²)'
+        default:
+          return 'Não definido'
+      }
+    } else {
+      switch (id) {
+        case 'starter':
+          return 'STARTER (até 250m²)'
+        case 'medium':
+          return 'MEDIUM (251m² a 500m²)'
+        case 'premium':
+          return 'PREMIUM (501m² a 1000m²)'
+        case 'exclusive':
+          return 'EXCLUSIVE (>1000m²)'
+        default:
+          return 'Não definido'
+      }
+    }
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -114,13 +154,40 @@ export function SpecificOverview() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-accent hover:shadow-md transition-all group cursor-default md:col-span-2">
+        <Card className="border-l-4 border-l-amber-500 hover:shadow-md transition-all group cursor-default">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Áreas Comuns</CardTitle>
+            <Trees className="h-4 w-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{condoDetails.calc_areas_comuns || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Espaços cadastrados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-emerald-500 hover:shadow-md transition-all group cursor-default">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Densidade</CardTitle>
+            <Maximize className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div
+              className="text-sm font-bold mt-1 truncate"
+              title={getDensityName(condoDetails.calc_densidade_id, condoDetails.tipo)}
+            >
+              {getDensityName(condoDetails.calc_densidade_id, condoDetails.tipo)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Trilha de cálculo</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-accent hover:shadow-md transition-all group cursor-default md:col-span-2 lg:col-span-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Gestão Atual</CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row gap-4 justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-muted-foreground">Administradora</p>
               <p
                 className="text-sm font-bold truncate mt-1"
@@ -130,7 +197,7 @@ export function SpecificOverview() {
               </p>
             </div>
             <div className="hidden sm:block w-px bg-border my-1" />
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-muted-foreground">Síndico</p>
               <p className="text-sm font-bold truncate mt-1" title={condoDetails.profiles?.name}>
                 {condoDetails.profiles?.name || 'Não atribuído'}

@@ -286,10 +286,21 @@ export default function Condominios() {
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="starter">STARTER (até 250m²)</SelectItem>
-                          <SelectItem value="medium">MEDIUM (251m² a 500m²)</SelectItem>
-                          <SelectItem value="premium">PREMIUM (501m² a 1000m²)</SelectItem>
-                          <SelectItem value="exclusive">EXCLUSIVE (acima de 1000m²)</SelectItem>
+                          {formTipo === 'vertical' ? (
+                            <>
+                              <SelectItem value="starter">STARTER (≤80m²)</SelectItem>
+                              <SelectItem value="medium">MEDIUM (81-120m²)</SelectItem>
+                              <SelectItem value="premium">PREMIUM (121-200m²)</SelectItem>
+                              <SelectItem value="exclusive">EXCLUSIVE (&gt;200m²)</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="starter">STARTER (até 250m²)</SelectItem>
+                              <SelectItem value="medium">MEDIUM (251m² a 500m²)</SelectItem>
+                              <SelectItem value="premium">PREMIUM (501m² a 1000m²)</SelectItem>
+                              <SelectItem value="exclusive">EXCLUSIVE (acima de 1000m²)</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
