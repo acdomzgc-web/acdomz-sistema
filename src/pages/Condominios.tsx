@@ -73,8 +73,12 @@ export default function Condominios() {
       cnpj: formData.get('cnpj') as string,
       address: formData.get('address') as string,
       total_units: parseInt(formData.get('units') as string) || 0,
-      admin_id: (formData.get('admin_id') as string) || null,
-      sindico_id: (formData.get('sindico_id') as string) || null,
+      admin_id:
+        formData.get('admin_id') === 'none' ? null : (formData.get('admin_id') as string) || null,
+      sindico_id:
+        formData.get('sindico_id') === 'none'
+          ? null
+          : (formData.get('sindico_id') as string) || null,
       calc_densidade_id: (formData.get('calc_densidade_id') as string) || 'medium',
       calc_areas_comuns: parseInt(formData.get('calc_areas_comuns') as string) || 0,
       tipo: formTipo,
@@ -308,12 +312,12 @@ export default function Condominios() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label>Administradora Parceira</Label>
-                      <Select name="admin_id" defaultValue={editingCondo?.admin_id || ''}>
+                      <Select name="admin_id" defaultValue={editingCondo?.admin_id || 'none'}>
                         <SelectTrigger>
                           <SelectValue placeholder="Nenhuma" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma</SelectItem>
+                          <SelectItem value="none">Nenhuma</SelectItem>
                           {admins.map((a) => (
                             <SelectItem key={a.id} value={a.id}>
                               {a.name}
@@ -324,12 +328,12 @@ export default function Condominios() {
                     </div>
                     <div className="grid gap-2">
                       <Label>Síndico Atual</Label>
-                      <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || ''}>
+                      <Select name="sindico_id" defaultValue={editingCondo?.sindico_id || 'none'}>
                         <SelectTrigger>
                           <SelectValue placeholder="Nenhum" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhum</SelectItem>
+                          <SelectItem value="none">Nenhum</SelectItem>
                           {profiles.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name}
