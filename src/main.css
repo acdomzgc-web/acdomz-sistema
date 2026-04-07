@@ -36,7 +36,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 206 52% 21%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
@@ -56,35 +56,48 @@
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 206 52% 21%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 28 45% 70%;
-    --secondary-foreground: 206 52% 21%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 100%;
+    /* Elegant Dark Mode based on ACDOMZ logo (Deep Navy & Gold) */
+    --background: 210 40% 6%;
+    --foreground: 210 20% 98%;
+
+    --card: 210 40% 8%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 210 40% 8%;
+    --popover-foreground: 210 20% 98%;
+
+    /* Primary: Gold/Tan to pop against dark background */
+    --primary: 28 45% 70%;
+    --primary-foreground: 210 40% 6%;
+
+    /* Secondary: Darker Blue / Gray for subtle elements */
+    --secondary: 210 30% 16%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 210 40% 14%;
+    --muted-foreground: 210 20% 65%;
+
+    --accent: 210 40% 16%;
+    --accent-foreground: 210 20% 98%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 210 40% 18%;
+    --input: 210 40% 18%;
     --ring: 28 45% 70%;
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 206 52% 21%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 20%;
+
+    --sidebar-background: 210 40% 6%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 28 45% 70%;
+    --sidebar-primary-foreground: 210 40% 6%;
+    --sidebar-accent: 210 40% 16%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 210 40% 18%;
     --sidebar-ring: 28 45% 70%;
-    --chart-1: 206 52% 21%;
-    --chart-2: 28 45% 70%;
+
+    --chart-1: 28 45% 70%;
+    --chart-2: 206 52% 40%;
     --chart-3: 142 71% 45%;
     --chart-4: 43 96% 56%;
     --chart-5: 0 84% 60%;
