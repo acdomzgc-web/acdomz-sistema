@@ -407,12 +407,29 @@ export default function Documentos() {
                               size="icon"
                               className="h-8 w-8 text-primary hover:bg-primary/10"
                               title="Visualizar"
-                              onClick={() => {
+                              onClick={async () => {
                                 if (file.file_path) {
-                                  const { data } = supabase.storage
-                                    .from('documentos')
-                                    .getPublicUrl(file.file_path)
-                                  window.open(data.publicUrl, '_blank', 'noopener,noreferrer')
+                                  try {
+                                    const { data, error } = await supabase.storage
+                                      .from('documentos')
+                                      .createSignedUrl(file.file_path, 3600)
+
+                                    if (error) throw error
+                                    if (data?.signedUrl) {
+                                      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+                                    } else {
+                                      const publicUrl = supabase.storage
+                                        .from('documentos')
+                                        .getPublicUrl(file.file_path).data.publicUrl
+                                      window.open(publicUrl, '_blank', 'noopener,noreferrer')
+                                    }
+                                  } catch (err: any) {
+                                    toast({
+                                      title: 'Erro ao abrir',
+                                      description: err.message,
+                                      variant: 'destructive',
+                                    })
+                                  }
                                 }
                               }}
                             >

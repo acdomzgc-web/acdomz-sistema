@@ -61,6 +61,9 @@ export default function Administradoras() {
       phone: formData.get('phone') as string,
       email: formData.get('email') as string,
       address: formData.get('address') as string,
+      responsavel_nome: formData.get('responsavel_nome') as string,
+      responsavel_email: formData.get('responsavel_email') as string,
+      responsavel_phone: formData.get('responsavel_phone') as string,
     }
 
     if (editingAdmin) {
@@ -172,6 +175,39 @@ export default function Administradoras() {
                     defaultValue={editingAdmin?.address}
                     placeholder="Rua, Número, Bairro, Cidade - UF"
                   />
+                </div>
+                <div className="space-y-4 mt-2 border-t pt-4">
+                  <h3 className="text-sm font-semibold text-primary">Dados do Responsável</h3>
+                  <div className="grid gap-2">
+                    <Label htmlFor="responsavel_nome">Nome do Responsável</Label>
+                    <Input
+                      id="responsavel_nome"
+                      name="responsavel_nome"
+                      defaultValue={editingAdmin?.responsavel_nome}
+                      placeholder="Ex: João Silva"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="responsavel_email">E-mail Pessoal</Label>
+                      <Input
+                        id="responsavel_email"
+                        name="responsavel_email"
+                        type="email"
+                        defaultValue={editingAdmin?.responsavel_email}
+                        placeholder="joao@email.com"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="responsavel_phone">Telefone Pessoal</Label>
+                      <Input
+                        id="responsavel_phone"
+                        name="responsavel_phone"
+                        defaultValue={editingAdmin?.responsavel_phone}
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

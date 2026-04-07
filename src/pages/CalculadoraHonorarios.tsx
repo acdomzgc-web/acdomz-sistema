@@ -33,6 +33,7 @@ export default function CalculadoraHonorarios() {
   const [areasComuns, setAreasComuns] = useState<number>(2)
   const [isSaving, setIsSaving] = useState(false)
   const [isAuto, setIsAuto] = useState<boolean>(true)
+  const [tipoCondo, setTipoCondo] = useState<string>('horizontal')
 
   useEffect(() => {
     supabase
@@ -51,14 +52,19 @@ export default function CalculadoraHonorarios() {
         setLotes(condo.total_units || 0)
         setDensidadeId(condo.calc_densidade_id || 'medium')
         setAreasComuns(condo.calc_areas_comuns || 0)
+        setTipoCondo(condo.tipo || 'horizontal')
       }
+    } else if (!isAuto) {
+      setTipoCondo('horizontal')
     }
   }, [isAuto, selectedCondominioId, condominios])
 
   const calc = useMemo(() => {
     const densidade = DENSIDADES.find((x) => x.id === densidadeId) || DENSIDADES[1]
 
-    const variavelLotes = calcularLotes(lotes || 0)
+    const verticalModifier = tipoCondo === 'vertical' ? 0.85 : 1.0
+
+    const variavelLotes = calcularLotes(lotes || 0) * verticalModifier
     const valorAreasComuns = (areasComuns || 0) * VALOR_AREA_COMUM
     const subtotal = BASE_VALUE + variavelLotes + valorAreasComuns
     const honorarioTecnico = subtotal * densidade.multiplier
@@ -162,8 +168,13 @@ export default function CalculadoraHonorarios() {
               <div className="grid sm:grid-cols-2 gap-8">
                 <div className="space-y-3 bg-muted/10 p-4 rounded-xl border border-muted">
                   <Label className="text-base text-foreground font-semibold">
-                    Quantidade de Lotes
+                    Quantidade de {tipoCondo === 'vertical' ? 'Unidades' : 'Lotes'}
                   </Label>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                    <span>
+                      Modo: <strong className="capitalize">{tipoCondo}</strong>
+                    </span>
+                  </div>
                   <Input
                     type="number"
                     min={0}
@@ -257,7 +268,9 @@ export default function CalculadoraHonorarios() {
                 </div>
 
                 <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Variável Lotes</span>
+                  <span className="text-muted-foreground">
+                    Variável {tipoCondo === 'vertical' ? 'Unidades' : 'Lotes'}
+                  </span>
                   <span className="font-mono font-medium text-green-600">
                     +{formatCurrency(calc.variavelLotes)}
                   </span>

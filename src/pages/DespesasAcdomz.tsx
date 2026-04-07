@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { supabase } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
+import { Plus, Edit, Trash2, Loader2, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { supabase } from '@/lib/supabase/client'
-import { format } from 'date-fns'
-import { Plus, Trash2 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
 import {
   Table,
   TableBody,
@@ -29,203 +12,297 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { FinanceiroCharts, CategoriasDialog } from '@/components/financeiro/Shared'
 
 export default function DespesasAcdomz() {
   const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<string>('last_3')
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [formData, setFormData] = useState({ description: '', amount: '', date: '' })
+  const [cats, setCats] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadData()
-  }, [period, selectedMonth])
+  const [form, setForm] = useState({
+    id: '',
+    description: '',
+    amount: '',
+    date: '',
+    is_recurrent: false,
+    category: 'Geral',
+  })
 
-  const loadData = async () => {
-    setLoading(true)
-    let q = supabase
+  const load = async () => {
+    const res = await supabase
       .from('despesas_pontuais_acdomz')
       .select('*')
       .order('date', { ascending: false })
-
-    const now = new Date()
-    let start, end
-    if (period === 'specific_month') {
-      start = new Date(now.getFullYear(), selectedMonth - 1, 1)
-      end = new Date(now.getFullYear(), selectedMonth, 0)
-    } else if (period === 'last_3') {
-      start = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    } else if (period === 'last_6') {
-      start = new Date(now.getFullYear(), now.getMonth() - 5, 1)
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    } else if (period === 'annual') {
-      start = new Date(now.getFullYear(), 0, 1)
-      end = new Date(now.getFullYear(), 11, 31)
-    }
-
-    if (start && end) {
-      q = q
-        .gte('date', start.toISOString().split('T')[0])
-        .lte('date', end.toISOString().split('T')[0])
-    }
-
-    const { data: res } = await q
-    if (res) setData(res)
-    setLoading(false)
+    if (res.data) setData(res.data)
   }
+  const loadCats = async () => {
+    const res = await supabase
+      .from('categorias_financeiras')
+      .select('*')
+      .eq('type', 'despesa')
+      .order('name')
+    if (res.data) setCats(res.data)
+  }
+  useEffect(() => {
+    load()
+    loadCats()
+  }, [])
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('despesas_pontuais_acdomz').delete().eq('id', id)
-    loadData()
-    toast({ title: 'Despesa excluída' })
+  const handleUploadNF = async (e: any) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const res = await supabase.functions.invoke('extrair-nf-acdomz', { body: {} })
+      if (res.error) throw res.error
+      setForm((p) => ({
+        ...p,
+        amount: res.data.data.amount,
+        description: res.data.data.description,
+        date: res.data.data.date,
+      }))
+      toast({ title: 'NF lida com sucesso via IA!' })
+    } catch (err: any) {
+      toast({ title: 'Erro IA', description: err.message, variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleSave = async () => {
-    if (!formData.description || !formData.amount || !formData.date) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' })
-      return
+    const payload = {
+      description: form.description,
+      amount: Number(form.amount),
+      date: form.date,
+      is_recurrent: form.is_recurrent,
+      category: form.category,
     }
-    await supabase.from('despesas_pontuais_acdomz').insert([
-      {
-        description: formData.description,
-        amount: parseFloat(formData.amount),
-        date: formData.date,
-      },
-    ])
-    setIsDialogOpen(false)
-    setFormData({ description: '', amount: '', date: '' })
-    loadData()
-    toast({ title: 'Despesa adicionada' })
+    if (form.id) await supabase.from('despesas_pontuais_acdomz').update(payload).eq('id', form.id)
+    else await supabase.from('despesas_pontuais_acdomz').insert(payload)
+    toast({ title: 'Salvo com sucesso' })
+    setOpen(false)
+    load()
   }
 
   return (
-    <Card className="border-border/50 shadow-sm bg-gradient-to-b from-card to-card/80">
-      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b bg-muted/20 pb-4">
-        <CardTitle className="text-lg font-semibold">Lista de Saídas</CardTitle>
-        <div className="flex flex-wrap items-center gap-3">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[160px] bg-background">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="specific_month">Mês Específico</SelectItem>
-              <SelectItem value="last_3">Últimos 3 Meses</SelectItem>
-              <SelectItem value="last_6">Últimos 6 Meses</SelectItem>
-              <SelectItem value="annual">Anual</SelectItem>
-              <SelectItem value="all">Todo o Período</SelectItem>
-            </SelectContent>
-          </Select>
-          {period === 'specific_month' && (
-            <Select
-              value={selectedMonth.toString()}
-              onValueChange={(v) => setSelectedMonth(parseInt(v))}
+    <div className="space-y-6 animate-fade-in-up">
+      <FinanceiroCharts data={data} color="#ef4444" />
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg border shadow-sm">
+        <h3 className="font-semibold text-lg text-primary">Histórico de Saídas</h3>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                setForm({
+                  id: '',
+                  description: '',
+                  amount: '',
+                  date: new Date().toISOString().split('T')[0],
+                  is_recurrent: false,
+                  category: cats[0]?.name || 'Geral',
+                })
+              }
             >
-              <SelectTrigger className="w-[140px] bg-background">
-                <SelectValue placeholder="Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <SelectItem key={m} value={m.toString()}>
-                    {new Date(2000, m - 1).toLocaleString('pt-BR', { month: 'long' })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-red-600 hover:bg-red-700 text-white">
-                <Plus className="w-4 h-4 mr-2" /> Nova Despesa
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nova Despesa</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Descrição</Label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Ex: Material de escritório"
+              <Plus className="w-4 h-4 mr-2" /> Nova Despesa
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{form.id ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {!form.id && (
+                <div
+                  className="bg-muted/30 p-4 rounded-xl border border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => document.getElementById('nf-upload-desp')?.click()}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-destructive mb-2" />
+                  ) : (
+                    <Receipt className="w-6 h-6 text-destructive mb-2" />
+                  )}
+                  <span className="text-sm font-medium">Anexar e Ler NF (IA)</span>
+                  <input
+                    id="nf-upload-desp"
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.jpg,.png"
+                    onChange={handleUploadNF}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Valor (R$)</Label>
+              )}
+              <div className="grid gap-2">
+                <Label>Descrição</Label>
+                <Input
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Valor</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="grid gap-2">
                   <Label>Data</Label>
                   <Input
                     type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    value={form.date}
+                    onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
                   />
                 </div>
-                <Button
-                  onClick={handleSave}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Salvar
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Data</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="w-[80px] text-center">Ações</TableHead>
+              <div className="grid grid-cols-2 gap-4 items-end">
+                <div className="grid gap-2">
+                  <Label>Categoria</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={form.category}
+                      onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cats.map((c) => (
+                          <SelectItem key={c.id} value={c.name}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <CategoriasDialog type="despesa" onUpdate={loadCats} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/20">
+                  <Switch
+                    checked={form.is_recurrent}
+                    onCheckedChange={(c) => setForm((p) => ({ ...p, is_recurrent: c }))}
+                  />
+                  <Label className="cursor-pointer font-medium">Recorrente?</Label>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleSave}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="border rounded-lg bg-card shadow-sm">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Descrição</TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((d) => (
+              <TableRow key={d.id} className="hover:bg-muted/30">
+                <TableCell className="font-medium text-primary">{d.description}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="font-normal">
+                    {d.category || 'Geral'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {d.is_recurrent ? (
+                    <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">
+                      Recorrente
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-200 text-amber-700 bg-amber-50"
+                    >
+                      Pontual
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(d.date).toLocaleDateString('pt-BR')}
+                </TableCell>
+                <TableCell className="text-red-600 font-bold">
+                  R$ {Number(d.amount).toFixed(2)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setForm({
+                        id: d.id,
+                        description: d.description,
+                        amount: d.amount,
+                        date: d.date,
+                        is_recurrent: d.is_recurrent,
+                        category: d.category || cats[0]?.name,
+                      })
+                      setOpen(true)
+                    }}
+                  >
+                    <Edit className="w-4 h-4 text-secondary" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={async () => {
+                      await supabase.from('despesas_pontuais_acdomz').delete().eq('id', d.id)
+                      load()
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.date ? format(new Date(item.date), 'dd/MM/yyyy') : '-'}
-                  </TableCell>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell className="text-right text-red-600 font-bold">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      item.amount,
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    Nenhuma despesa encontrada para o período.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+            ))}
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                  Nenhuma despesa encontrada.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   )
 }

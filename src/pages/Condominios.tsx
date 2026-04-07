@@ -76,6 +76,8 @@ export default function Condominios() {
       sindico_id: (formData.get('sindico_id') as string) || null,
       calc_densidade_id: (formData.get('calc_densidade_id') as string) || 'medium',
       calc_areas_comuns: parseInt(formData.get('calc_areas_comuns') as string) || 0,
+      tipo: (formData.get('tipo') as string) || 'horizontal',
+      ocupacao: (formData.get('ocupacao') as string) || 'residencial',
     }
 
     if (editingCondo) {
@@ -205,6 +207,36 @@ export default function Condominios() {
                       placeholder="Rua, Número, Bairro, Cidade - UF"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Tipo de Condomínio</Label>
+                      <Select name="tipo" defaultValue={editingCondo?.tipo || 'horizontal'}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="horizontal">Horizontal (Lotes)</SelectItem>
+                          <SelectItem value="vertical">Vertical (Unidades)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Ocupação</Label>
+                      <Select
+                        name="ocupacao"
+                        defaultValue={editingCondo?.ocupacao || 'residencial'}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="residencial">Residencial</SelectItem>
+                          <SelectItem value="comercial">Comercial</SelectItem>
+                          <SelectItem value="misto">Misto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 mt-2">
@@ -308,7 +340,8 @@ export default function Condominios() {
                 <TableHead>Condomínio</TableHead>
                 <TableHead>Administradora</TableHead>
                 <TableHead>Síndico</TableHead>
-                <TableHead className="text-center">Unidades</TableHead>
+                <TableHead className="text-center">Tipo</TableHead>
+                <TableHead className="text-center">Unidades/Lotes</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -326,6 +359,11 @@ export default function Condominios() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {condo.profiles?.name || '-'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="capitalize text-[10px]">
+                      {condo.tipo || 'Horizontal'}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-center font-medium">{condo.total_units}</TableCell>
                   <TableCell className="text-right">

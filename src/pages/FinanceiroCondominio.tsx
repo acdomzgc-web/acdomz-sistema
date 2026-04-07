@@ -23,7 +23,17 @@ import { useAuth } from '@/hooks/use-auth'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Line, LineChart, XAxis, YAxis, CartesianGrid } from 'recharts'
+import {
+  Line,
+  LineChart,
+  Bar,
+  BarChart,
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import { Badge } from '@/components/ui/badge'
 import { Search, FileText, CheckCircle2, RefreshCw, Bot, Loader2, Info } from 'lucide-react'
 
@@ -45,6 +55,7 @@ export default function FinanceiroCondominio() {
   const [docsInad, setDocsInad] = useState<any[]>([])
   const [dreExtraida, setDreExtraida] = useState<boolean>(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('line')
 
   // States for Parecer Financeiro IA
   const [parecerIA, setParecerIA] = useState('')
@@ -314,29 +325,101 @@ export default function FinanceiroCondominio() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 shadow-sm border-border/50">
-              <CardHeader className="py-4 border-b bg-muted/10">
+            <Card className="lg:col-span-2 shadow-sm border-border/50 flex flex-col">
+              <CardHeader className="py-4 border-b bg-muted/10 flex flex-row items-center justify-between">
                 <h3 className="font-semibold text-primary">Evolução do Saldo Consolidado</h3>
+                <Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
+                  <SelectTrigger className="w-[140px] h-8 bg-background text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="line">Linhas</SelectItem>
+                    <SelectItem value="bar">Barras</SelectItem>
+                    <SelectItem value="area">Área</SelectItem>
+                  </SelectContent>
+                </Select>
               </CardHeader>
-              <CardContent className="p-4 h-[300px]">
+              <CardContent className="p-4 flex-1 min-h-[300px]">
                 <ChartContainer
-                  config={{ saldo: { color: '#1a3a52', label: 'Saldo (DRE)' } }}
+                  config={{ saldo: { color: 'hsl(var(--primary))', label: 'Saldo (DRE)' } }}
                   className="h-full w-full"
                 >
-                  <LineChart data={mockChart}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="saldo"
-                      stroke="var(--color-saldo)"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
+                  {chartType === 'line' ? (
+                    <LineChart data={mockChart}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="hsl(var(--border))"
+                      />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line
+                        type="monotone"
+                        dataKey="saldo"
+                        stroke="var(--color-saldo)"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  ) : chartType === 'bar' ? (
+                    <BarChart data={mockChart}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="hsl(var(--border))"
+                      />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="saldo"
+                        fill="var(--color-saldo)"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={40}
+                      />
+                    </BarChart>
+                  ) : (
+                    <AreaChart data={mockChart}>
+                      <defs>
+                        <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-saldo)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--color-saldo)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="hsl(var(--border))"
+                      />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area
+                        type="monotone"
+                        dataKey="saldo"
+                        stroke="var(--color-saldo)"
+                        fill="url(#colorSaldo)"
+                        strokeWidth={3}
+                      />
+                    </AreaChart>
+                  )}
                 </ChartContainer>
               </CardContent>
             </Card>
