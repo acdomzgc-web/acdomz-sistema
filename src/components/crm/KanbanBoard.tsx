@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { MoreHorizontal, Building, Phone, Mail, Clock } from 'lucide-react'
+import { MoreHorizontal, Building, Phone, Mail, Clock, User } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,24 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+
+const typeMap: Record<string, string> = {
+  sindico: 'Síndico',
+  administradora: 'Administradora',
+  incorporadora: 'Incorporadora',
+  construtora: 'Construtora',
+  parceiro: 'Parceiro',
+  outro: 'Outro',
+}
+
+const originMap: Record<string, string> = {
+  indicacao: 'Indicação',
+  site: 'Site',
+  redes_sociais: 'Redes Sociais',
+  prospeccao_ativa: 'Prosp. Ativa',
+  evento: 'Evento',
+  outro: 'Outro',
+}
 
 const COLUMNS = [
   {
@@ -68,6 +86,12 @@ export function KanbanBoard({
 }) {
   const getLeadsByStatus = (status: string) => leads.filter((l) => l.status === status)
 
+  const getDaysInStage = (dateString: string) => {
+    if (!dateString) return 0
+    const diffTime = Math.abs(new Date().getTime() - new Date(dateString).getTime())
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  }
+
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
     e.dataTransfer.setData('leadId', leadId)
   }
@@ -120,8 +144,29 @@ export function KanbanBoard({
                     onClick={() => onEditLead(lead)}
                   >
                     <CardContent className="p-4 space-y-3">
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {lead.lead_type && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 bg-primary/5"
+                          >
+                            {typeMap[lead.lead_type] || lead.lead_type}
+                          </Badge>
+                        )}
+                        {lead.origin && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 bg-secondary/30"
+                          >
+                            {originMap[lead.origin] || lead.origin}
+                          </Badge>
+                        )}
+                      </div>
+
                       <div className="flex justify-between items-start">
-                        <div className="font-semibold text-sm line-clamp-1">{lead.name}</div>
+                        <div className="font-semibold text-sm line-clamp-2 leading-tight">
+                          {lead.name}
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2 -mt-2">
@@ -146,8 +191,15 @@ export function KanbanBoard({
                         </DropdownMenu>
                       </div>
 
+                      {lead.contact_person && (
+                        <div className="flex items-center text-xs text-muted-foreground gap-1.5 mt-1">
+                          <User className="h-3 w-3 flex-shrink-0" />
+                          <span className="line-clamp-1">{lead.contact_person}</span>
+                        </div>
+                      )}
+
                       {lead.condominio_name && (
-                        <div className="flex items-center text-xs text-muted-foreground gap-1.5">
+                        <div className="flex items-center text-xs text-muted-foreground gap-1.5 mt-1">
                           <Building className="h-3 w-3 flex-shrink-0" />
                           <span className="line-clamp-1">{lead.condominio_name}</span>
                         </div>
@@ -162,12 +214,23 @@ export function KanbanBoard({
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-muted-foreground">
-                        {lead.phone && <Phone className="h-3 w-3" />}
-                        {lead.email && <Mail className="h-3 w-3" />}
-                        <div className="ml-auto flex items-center gap-1 text-[10px]">
-                          <Clock className="h-3 w-3" />
-                          {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50 text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          {lead.phone && <Phone className="h-3 w-3" />}
+                          {lead.email && <Mail className="h-3 w-3" />}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${
+                              getDaysInStage(lead.status_updated_at || lead.updated_at) > 7
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-medium'
+                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                            title="Dias nesta etapa"
+                          >
+                            <Clock className="h-2.5 w-2.5" />
+                            {getDaysInStage(lead.status_updated_at || lead.updated_at)}d
+                          </div>
                         </div>
                       </div>
                     </CardContent>

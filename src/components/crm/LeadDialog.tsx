@@ -37,6 +37,7 @@ export function LeadDialog({
 
   const [formData, setFormData] = useState({
     name: '',
+    contact_person: '',
     condominio_name: '',
     email: '',
     phone: '',
@@ -52,6 +53,7 @@ export function LeadDialog({
     if (lead) {
       setFormData({
         name: lead.name || '',
+        contact_person: lead.contact_person || '',
         condominio_name: lead.condominio_name || '',
         email: lead.email || '',
         phone: lead.phone || '',
@@ -65,6 +67,7 @@ export function LeadDialog({
     } else {
       setFormData({
         name: '',
+        contact_person: '',
         condominio_name: '',
         email: '',
         phone: '',
@@ -93,6 +96,7 @@ export function LeadDialog({
 
     const payload = {
       name: formData.name,
+      contact_person: formData.contact_person,
       condominio_name: formData.condominio_name,
       email: formData.email,
       phone: formData.phone,
@@ -103,6 +107,10 @@ export function LeadDialog({
       origin: formData.origin,
       units_count: formData.units_count ? Number(formData.units_count) : null,
       updated_at: new Date().toISOString(),
+    }
+
+    if (lead?.id && lead.status !== formData.status) {
+      ;(payload as any).status_updated_at = payload.updated_at
     }
 
     let error
@@ -138,10 +146,30 @@ export function LeadDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">
-                Nome do Contato / Empresa <span className="text-red-500">*</span>
+                Empresa / Condomínio Principal <span className="text-red-500">*</span>
               </Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Ex: Construtora X"
+                required
+              />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_person">Pessoa de Contato (Responsável)</Label>
+              <Input
+                id="contact_person"
+                name="contact_person"
+                value={formData.contact_person}
+                onChange={handleChange}
+                placeholder="Ex: João da Silva"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="lead_type">Tipo de Contato</Label>
               <Select
