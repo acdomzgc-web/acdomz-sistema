@@ -3,9 +3,11 @@ import { supabase } from '@/lib/supabase/client'
 import { CrmMetrics } from '@/components/crm/CrmMetrics'
 import { KanbanBoard } from '@/components/crm/KanbanBoard'
 import { LeadDialog } from '@/components/crm/LeadDialog'
+import { CrmDashboard } from '@/components/crm/CrmDashboard'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, LayoutDashboard, Kanban } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function Prospeccao() {
   const [leads, setLeads] = useState<any[]>([])
@@ -76,13 +78,30 @@ export default function Prospeccao() {
 
       <CrmMetrics leads={leads} />
 
-      <div className="mt-8">
-        <KanbanBoard
-          leads={leads}
-          onEditLead={handleEditLead}
-          onStatusChange={handleStatusChange}
-        />
-      </div>
+      <Tabs defaultValue="kanban" className="mt-8">
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="kanban" className="gap-2">
+              <Kanban className="w-4 h-4" /> Funil (Kanban)
+            </TabsTrigger>
+            <TabsTrigger value="dashboard" className="gap-2">
+              <LayoutDashboard className="w-4 h-4" /> Dashboard Analítico
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="kanban" className="m-0 focus-visible:outline-none">
+          <KanbanBoard
+            leads={leads}
+            onEditLead={handleEditLead}
+            onStatusChange={handleStatusChange}
+          />
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="m-0 focus-visible:outline-none">
+          <CrmDashboard leads={leads} />
+        </TabsContent>
+      </Tabs>
 
       <LeadDialog
         open={isDialogOpen}

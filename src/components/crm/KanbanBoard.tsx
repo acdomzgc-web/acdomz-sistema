@@ -14,32 +14,38 @@ import { Button } from '@/components/ui/button'
 
 const COLUMNS = [
   {
-    id: 'lead',
-    title: 'Novos Leads',
+    id: 'qualificacao',
+    title: 'Qualificação',
     color: 'bg-slate-100 dark:bg-slate-900/50',
     border: 'border-slate-200 dark:border-slate-800',
   },
   {
-    id: 'em_contato',
-    title: 'Em Contato',
+    id: 'primeiro_contato',
+    title: 'Primeiro Contato',
     color: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-blue-200 dark:border-blue-800',
   },
   {
-    id: 'respondido',
-    title: 'Respondido',
+    id: 'reuniao',
+    title: 'Reunião/Apresentação',
     color: 'bg-indigo-50 dark:bg-indigo-900/20',
     border: 'border-indigo-200 dark:border-indigo-800',
   },
   {
-    id: 'negociacao',
-    title: 'Negociação',
+    id: 'proposta',
+    title: 'Proposta Enviada',
     color: 'bg-amber-50 dark:bg-amber-900/20',
     border: 'border-amber-200 dark:border-amber-800',
   },
   {
+    id: 'negociacao',
+    title: 'Negociação',
+    color: 'bg-orange-50 dark:bg-orange-900/20',
+    border: 'border-orange-200 dark:border-orange-800',
+  },
+  {
     id: 'ganho',
-    title: 'Ganho',
+    title: 'Fechado/Ganho',
     color: 'bg-green-50 dark:bg-green-900/20',
     border: 'border-green-200 dark:border-green-800',
   },
@@ -62,12 +68,30 @@ export function KanbanBoard({
 }) {
   const getLeadsByStatus = (status: string) => leads.filter((l) => l.status === status)
 
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    e.dataTransfer.setData('leadId', leadId)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = (e: React.DragEvent, statusId: string) => {
+    e.preventDefault()
+    const leadId = e.dataTransfer.getData('leadId')
+    if (leadId) {
+      onStatusChange(leadId, statusId)
+    }
+  }
+
   return (
     <ScrollArea className="w-full whitespace-nowrap pb-4">
       <div className="flex gap-4 h-[calc(100vh-320px)] min-h-[500px] items-start">
         {COLUMNS.map((col) => (
           <div
             key={col.id}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col.id)}
             className={`flex flex-col w-[300px] flex-shrink-0 rounded-xl border ${col.border} ${col.color} overflow-hidden h-full`}
           >
             <div className="p-3 border-b border-border/50 bg-background/50 backdrop-blur-sm flex justify-between items-center font-medium">
@@ -82,7 +106,17 @@ export function KanbanBoard({
                 {getLeadsByStatus(col.id).map((lead) => (
                   <Card
                     key={lead.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow bg-card"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead.id)}
+                    className="cursor-pointer hover:shadow-md transition-shadow bg-card active:cursor-grabbing border-l-4"
+                    style={{
+                      borderLeftColor:
+                        lead.lead_type === 'parceiro' ||
+                        lead.lead_type === 'incorporadora' ||
+                        lead.lead_type === 'construtora'
+                          ? 'hsl(var(--chart-2))'
+                          : 'hsl(var(--primary))',
+                    }}
                     onClick={() => onEditLead(lead)}
                   >
                     <CardContent className="p-4 space-y-3">

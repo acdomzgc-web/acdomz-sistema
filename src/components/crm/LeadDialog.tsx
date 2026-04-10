@@ -40,9 +40,12 @@ export function LeadDialog({
     condominio_name: '',
     email: '',
     phone: '',
-    status: 'lead',
+    status: 'qualificacao',
     value: '',
     notes: '',
+    lead_type: 'sindico',
+    origin: 'prospeccao_ativa',
+    units_count: '',
   })
 
   useEffect(() => {
@@ -52,9 +55,12 @@ export function LeadDialog({
         condominio_name: lead.condominio_name || '',
         email: lead.email || '',
         phone: lead.phone || '',
-        status: lead.status || 'lead',
+        status: lead.status || 'qualificacao',
         value: lead.value?.toString() || '',
         notes: lead.notes || '',
+        lead_type: lead.lead_type || 'sindico',
+        origin: lead.origin || 'prospeccao_ativa',
+        units_count: lead.units_count?.toString() || '',
       })
     } else {
       setFormData({
@@ -62,9 +68,12 @@ export function LeadDialog({
         condominio_name: '',
         email: '',
         phone: '',
-        status: 'lead',
+        status: 'qualificacao',
         value: '',
         notes: '',
+        lead_type: 'sindico',
+        origin: 'prospeccao_ativa',
+        units_count: '',
       })
     }
   }, [lead, open])
@@ -90,6 +99,9 @@ export function LeadDialog({
       status: formData.status,
       value: formData.value ? Number(formData.value) : null,
       notes: formData.notes,
+      lead_type: formData.lead_type,
+      origin: formData.origin,
+      units_count: formData.units_count ? Number(formData.units_count) : null,
       updated_at: new Date().toISOString(),
     }
 
@@ -122,21 +134,58 @@ export function LeadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto px-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">
-                Nome do Contato <span className="text-red-500">*</span>
+                Nome do Contato / Empresa <span className="text-red-500">*</span>
               </Label>
               <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="condominio_name">Nome do Condomínio</Label>
+              <Label htmlFor="lead_type">Tipo de Contato</Label>
+              <Select
+                value={formData.lead_type}
+                onValueChange={(v) => handleSelectChange('lead_type', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sindico">Síndico</SelectItem>
+                  <SelectItem value="administradora">Administradora</SelectItem>
+                  <SelectItem value="incorporadora">Incorporadora</SelectItem>
+                  <SelectItem value="construtora">Construtora</SelectItem>
+                  <SelectItem value="parceiro">Parceiro Estratégico</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="condominio_name">
+                Nome do Condomínio{' '}
+                <span className="text-xs text-muted-foreground font-normal">(Opcional)</span>
+              </Label>
               <Input
                 id="condominio_name"
                 name="condominio_name"
                 value={formData.condominio_name}
                 onChange={handleChange}
+                placeholder="Caso aplicável"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="units_count">Nº de Unidades (Potencial)</Label>
+              <Input
+                id="units_count"
+                name="units_count"
+                type="number"
+                value={formData.units_count}
+                onChange={handleChange}
+                placeholder="Ex: 120"
               />
             </div>
           </div>
@@ -160,21 +209,21 @@ export function LeadDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="status">Estágio no Funil</Label>
+              <Label htmlFor="origin">Origem</Label>
               <Select
-                value={formData.status}
-                onValueChange={(v) => handleSelectChange('status', v)}
+                value={formData.origin}
+                onValueChange={(v) => handleSelectChange('origin', v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lead">Novos Leads</SelectItem>
-                  <SelectItem value="em_contato">Em Contato</SelectItem>
-                  <SelectItem value="respondido">Respondido</SelectItem>
-                  <SelectItem value="negociacao">Negociação</SelectItem>
-                  <SelectItem value="ganho">Ganho (Fechado)</SelectItem>
-                  <SelectItem value="perdido">Perdido</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="site">Site / Landing Page</SelectItem>
+                  <SelectItem value="redes_sociais">Redes Sociais</SelectItem>
+                  <SelectItem value="prospeccao_ativa">Prospecção Ativa</SelectItem>
+                  <SelectItem value="evento">Evento / Feira</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -190,6 +239,24 @@ export function LeadDialog({
                 placeholder="Ex: 1500.00"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="status">Estágio no Funil</Label>
+            <Select value={formData.status} onValueChange={(v) => handleSelectChange('status', v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="qualificacao">Qualificação</SelectItem>
+                <SelectItem value="primeiro_contato">Primeiro Contato</SelectItem>
+                <SelectItem value="reuniao">Reunião / Apresentação</SelectItem>
+                <SelectItem value="proposta">Proposta Enviada</SelectItem>
+                <SelectItem value="negociacao">Negociação</SelectItem>
+                <SelectItem value="ganho">Fechado / Ganho</SelectItem>
+                <SelectItem value="perdido">Perdido</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

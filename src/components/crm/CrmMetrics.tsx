@@ -11,7 +11,7 @@ export function CrmMetrics({ leads }: { leads: any[] }) {
     totalLeads > 0 ? ((wonLeads / (wonLeads + lostLeads || 1)) * 100).toFixed(1) : '0.0'
 
   const pipelineValue = leads
-    .filter((l) => ['lead', 'em_contato', 'respondido', 'negociacao'].includes(l.status))
+    .filter((l) => !['ganho', 'perdido'].includes(l.status))
     .reduce((acc, curr) => acc + (Number(curr.value) || 0), 0)
 
   return (
