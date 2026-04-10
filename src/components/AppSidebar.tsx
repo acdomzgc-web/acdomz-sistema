@@ -16,6 +16,7 @@ import {
   BarChart2,
   Settings,
   GripVertical,
+  Briefcase,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -43,6 +44,7 @@ const defaultNavItems = [
   { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
   { title: 'Prospecção (CRM)', url: '/prospeccao', icon: Target },
+  { title: 'Fornecedores', url: '/fornecedores', icon: Briefcase },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
 

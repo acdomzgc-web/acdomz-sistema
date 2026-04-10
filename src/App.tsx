@@ -21,6 +21,7 @@ import CalculadoraHonorarios from './pages/CalculadoraHonorarios'
 import Relatorios from './pages/Relatorios'
 import Configuracoes from './pages/Configuracoes'
 import Prospeccao from './pages/Prospeccao'
+import Fornecedores from './pages/Fornecedores'
 import { AuthProvider } from './hooks/use-auth'
 import { AuthGuard } from './components/AuthGuard'
 import { ThemeProvider } from './components/ThemeProvider'
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/calculadora" element={<CalculadoraHonorarios />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/prospeccao" element={<Prospeccao />} />
+              <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
