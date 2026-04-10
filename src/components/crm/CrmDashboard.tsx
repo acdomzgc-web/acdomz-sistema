@@ -8,18 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts'
 import { Label } from '@/components/ui/label'
 
 const chartConfig = {
@@ -185,7 +174,7 @@ export function CrmDashboard({ leads }: { leads: any[] }) {
         <CardContent>
           <div className="h-[400px] w-full flex items-center justify-center">
             {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={{ value: { label: 'Quantidade' } }} className="h-full w-full">
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -205,7 +194,7 @@ export function CrmDashboard({ leads }: { leads: any[] }) {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             ) : (
               <div className="text-muted-foreground text-sm">Sem dados para exibir no funil.</div>
             )}
