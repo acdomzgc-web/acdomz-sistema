@@ -42,8 +42,11 @@ const defaultNavItems = [
   { title: 'Síndicos', url: '/sindicos', icon: Users },
   { title: 'Calc. Honorários', url: '/calculadora', icon: Calculator },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart2 },
+  { title: 'Prospecção (CRM)', url: '/prospeccao', icon: Target },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ]
+
+import { Target } from 'lucide-react'
 
 export function AppSidebar() {
   const location = useLocation()
@@ -95,6 +98,16 @@ export function AppSidebar() {
         }
       }
 
+      const savedHidden = localStorage.getItem('sidebar-hidden-items')
+      let hiddenItems: string[] = []
+      if (savedHidden) {
+        try {
+          hiddenItems = JSON.parse(savedHidden)
+        } catch (e) {
+          console.error('Failed to parse hidden items', e)
+        }
+      }
+
       if (saved) {
         try {
           const order = JSON.parse(saved)
@@ -103,10 +116,12 @@ export function AppSidebar() {
             .filter(Boolean)
           const missing = defaultNavItems.filter((i) => !order.includes(i.title))
 
-          const merged = [...orderedItems, ...missing].map((item) => ({
-            ...item,
-            displayTitle: customNames[item.title] || item.title,
-          }))
+          const merged = [...orderedItems, ...missing]
+            .map((item) => ({
+              ...item,
+              displayTitle: customNames[item.title] || item.title,
+            }))
+            .filter((item) => !hiddenItems.includes(item.title))
 
           setNavItems(merged as any)
         } catch (e) {
@@ -114,10 +129,12 @@ export function AppSidebar() {
         }
       } else {
         setNavItems(
-          defaultNavItems.map((item) => ({
-            ...item,
-            displayTitle: customNames[item.title] || item.title,
-          })) as any,
+          defaultNavItems
+            .map((item) => ({
+              ...item,
+              displayTitle: customNames[item.title] || item.title,
+            }))
+            .filter((item) => !hiddenItems.includes(item.title)) as any,
         )
       }
     }

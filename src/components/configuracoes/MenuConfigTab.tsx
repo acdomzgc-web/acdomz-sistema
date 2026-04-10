@@ -25,12 +25,16 @@ const DEFAULT_MENU_ITEMS = [
   'Síndicos',
   'Calc. Honorários',
   'Relatórios',
+  'Prospecção (CRM)',
   'Configurações',
 ]
+
+import { Eye, EyeOff } from 'lucide-react'
 
 export function MenuConfigTab() {
   const [menuOrder, setMenuOrder] = useState<string[]>([])
   const [customNames, setCustomNames] = useState<Record<string, string>>({})
+  const [hiddenItems, setHiddenItems] = useState<string[]>([])
   const { toast } = useToast()
 
   useEffect(() => {
@@ -52,6 +56,15 @@ export function MenuConfigTab() {
     if (savedNames) {
       try {
         setCustomNames(JSON.parse(savedNames))
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    const savedHidden = localStorage.getItem('sidebar-hidden-items')
+    if (savedHidden) {
+      try {
+        setHiddenItems(JSON.parse(savedHidden))
       } catch (e) {
         // ignore
       }
@@ -80,13 +93,20 @@ export function MenuConfigTab() {
     setCustomNames((prev) => ({ ...prev, [item]: value }))
   }
 
+  const toggleHidden = (item: string) => {
+    setHiddenItems((prev) =>
+      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
+    )
+  }
+
   const saveLayout = () => {
     localStorage.setItem('sidebar-order-v2', JSON.stringify(menuOrder))
     localStorage.setItem('sidebar-custom-names', JSON.stringify(customNames))
+    localStorage.setItem('sidebar-hidden-items', JSON.stringify(hiddenItems))
     window.dispatchEvent(new Event('sidebar-order-updated'))
     toast({
       title: 'Layout salvo com sucesso',
-      description: 'A ordem e os nomes do menu foram atualizados.',
+      description: 'A ordem, visibilidade e os nomes do menu foram atualizados.',
     })
   }
 
@@ -95,8 +115,8 @@ export function MenuConfigTab() {
       <CardHeader>
         <CardTitle>Personalização do Menu</CardTitle>
         <CardDescription>
-          Reorganize a ordem e edite o nome de exibição das seções no menu lateral de acordo com sua
-          preferência. Todas as abas do sistema estão disponíveis aqui.
+          Reorganize a ordem, oculte abas que não deseja ver e edite o nome de exibição das seções
+          no menu lateral de acordo com sua preferência.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,21 +124,35 @@ export function MenuConfigTab() {
           {menuOrder.map((item, index) => (
             <div
               key={item}
-              className="flex items-center justify-between p-2 sm:p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors"
+              className={`flex items-center justify-between p-2 sm:p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors ${hiddenItems.includes(item) ? 'opacity-60' : ''}`}
             >
               <div className="flex items-center gap-3 flex-1">
                 <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => toggleHidden(item)}
+                  title={hiddenItems.includes(item) ? 'Mostrar aba' : 'Ocultar aba'}
+                >
+                  {hiddenItems.includes(item) ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
                 <Input
                   value={customNames[item] !== undefined ? customNames[item] : item}
                   onChange={(e) => handleNameChange(item, e.target.value)}
-                  className="h-8 max-w-[250px] font-medium"
+                  className="h-8 max-w-[200px] font-medium"
                   placeholder={item}
+                  disabled={hiddenItems.includes(item)}
                 />
                 <span className="text-xs text-muted-foreground hidden sm:inline-block">
                   (Original: {item})
                 </span>
               </div>
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1 ml-2 shrink-0">
                 <Button
                   variant="outline"
                   size="icon"
